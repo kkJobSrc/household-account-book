@@ -56,6 +56,69 @@ ifconfig
 
 **収入**: 給与、副収入、その他収入
 
+## ログ
+
+バックエンドは2種類のログファイルを日付ごとに出力します。
+
+| ファイル名 | 出力内容 |
+|---|---|
+| `db_YYYY-MM-DD.log` | DB への書き込み操作（登録・更新・削除）とそのペイロード |
+| `error_YYYY-MM-DD.log` | DB 操作の例外・未処理の HTTP エラー |
+
+日付が変わると自動で新しいファイルに切り替わります。
+
+### ログの保存先
+
+Docker 環境ではコンテナ内の `/app/logs/` に出力されます。  
+`LOG_DIR` 環境変数で変更できます。
+
+```bash
+# ログをリアルタイムで確認する
+docker exec kakeibo-backend tail -f /app/logs/db_$(date +%Y-%m-%d).log
+docker exec kakeibo-backend tail -f /app/logs/error_$(date +%Y-%m-%d).log
+```
+
+### ログのフォーマット
+
+```
+2026-05-04 12:34:56,789 [INFO] transaction created: {'type': 'expense', 'amount': 1500.0, ...}
+2026-05-04 12:35:10,123 [ERROR] Failed to create transaction: ... | data={...}
+```
+
+## DB 構成
+
+```mermaid
+erDiagram
+    members {
+        INTEGER id PK
+        STRING  name
+        STRING  color
+        DATETIME created_at
+    }
+
+    categories {
+        INTEGER id   PK
+        STRING  name
+        ENUM    type "income | expense"
+        STRING  icon
+        DATETIME created_at
+    }
+
+    transactions {
+        INTEGER  id          PK
+        ENUM     type        "income | expense"
+        FLOAT    amount
+        DATE     date
+        STRING   memo
+        INTEGER  member_id   FK
+        INTEGER  category_id FK
+        DATETIME created_at
+    }
+
+    members      ||--o{ transactions : "1人が複数の取引を持つ"
+    categories   ||--o{ transactions : "1カテゴリが複数の取引を持つ"
+```
+
 ## 開発
 
 ```bash
