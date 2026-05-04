@@ -12,6 +12,7 @@ export interface Category {
   name: string;
   type: TransactionType;
   icon: string;
+  memo: string;
   created_at: string;
 }
 

@@ -9,7 +9,7 @@ const navItems = [
   { to: '/', label: 'ホーム', icon: '🏠' },
   { to: '/transactions', label: '収支', icon: '💴' },
   { to: '/reports', label: 'レポート', icon: '📊' },
-  { to: '/members', label: 'メンバー', icon: '👥' },
+  { to: '/members', label: 'メンバー・カテゴリ', icon: '👥' },
 ];
 
 export default function App() {

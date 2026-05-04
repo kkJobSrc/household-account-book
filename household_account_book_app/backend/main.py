@@ -2,6 +2,7 @@ import traceback
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 from database import engine
 import models
 from routers import members, categories, transactions, reports
@@ -10,6 +11,14 @@ from logger import error_logger
 
 # テーブル作成
 models.Base.metadata.create_all(bind=engine)
+
+# 既存 DB への追加カラムマイグレーション
+with engine.connect() as _conn:
+    try:
+        _conn.execute(text("ALTER TABLE categories ADD COLUMN memo VARCHAR NOT NULL DEFAULT ''"))
+        _conn.commit()
+    except Exception:
+        pass  # カラムが既に存在する場合は無視
 
 # 初期データ投入
 seed()

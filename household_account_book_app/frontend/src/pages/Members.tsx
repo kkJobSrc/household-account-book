@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getMembers, createMember, updateMember, deleteMember, getCategories, createCategory, deleteCategory } from '../api';
+import { getMembers, createMember, updateMember, deleteMember, getCategories, createCategory, updateCategory, deleteCategory } from '../api';
 import type { Member, Category } from '../types';
 
 const COLORS = ['#2563eb','#16a34a','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#065f46'];
@@ -13,9 +13,11 @@ export default function Members() {
   const [memberName, setMemberName] = useState('');
   const [memberColor, setMemberColor] = useState(COLORS[0]);
   const [showCatModal, setShowCatModal] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [catName, setCatName] = useState('');
   const [catType, setCatType] = useState<'expense' | 'income'>('expense');
   const [catIcon, setCatIcon] = useState('');
+  const [catMemo, setCatMemo] = useState('');
   const [saving, setSaving] = useState(false);
 
   const loadMembers = () => getMembers().then(setMembers);
@@ -62,13 +64,31 @@ export default function Members() {
     loadMembers();
   };
 
+  const openCreateCategory = () => {
+    setEditingCategory(null);
+    setCatName(''); setCatType('expense'); setCatIcon(''); setCatMemo('');
+    setShowCatModal(true);
+  };
+
+  const openEditCategory = (c: Category) => {
+    setEditingCategory(c);
+    setCatName(c.name);
+    setCatType(c.type as 'expense' | 'income');
+    setCatIcon(c.icon);
+    setCatMemo(c.memo ?? '');
+    setShowCatModal(true);
+  };
+
   const saveCategory = async () => {
     if (!catName.trim()) return;
     setSaving(true);
     try {
-      await createCategory({ name: catName, type: catType, icon: catIcon });
+      if (editingCategory) {
+        await updateCategory(editingCategory.id, { name: catName, type: catType, icon: catIcon, memo: catMemo });
+      } else {
+        await createCategory({ name: catName, type: catType, icon: catIcon, memo: catMemo });
+      }
       setShowCatModal(false);
-      setCatName(''); setCatIcon('');
       loadCategories();
     } finally {
       setSaving(false);
@@ -133,7 +153,7 @@ export default function Members() {
       {tab === 'categories' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <button className="btn btn-primary" onClick={() => setShowCatModal(true)}>＋ カテゴリ追加</button>
+            <button className="btn btn-primary" onClick={openCreateCategory}>＋ カテゴリ追加</button>
           </div>
 
           <div style={{ marginBottom: 24 }}>
@@ -144,7 +164,11 @@ export default function Members() {
               ) : expenseCategories.map((c, i) => (
                 <div key={c.id} className={`cat-row ${i > 0 ? 'cat-row-border' : ''}`}>
                   <span className="cat-icon">{c.icon || '📦'}</span>
-                  <span className="cat-name">{c.name}</span>
+                  <div className="cat-info">
+                    <span className="cat-name">{c.name}</span>
+                    {c.memo && <span className="cat-memo">{c.memo}</span>}
+                  </div>
+                  <button className="btn btn-ghost btn-sm" onClick={() => openEditCategory(c)}>編集</button>
                   <button className="btn btn-danger btn-sm" onClick={() => handleDeleteCat(c.id)}>削除</button>
                 </div>
               ))}
@@ -159,7 +183,11 @@ export default function Members() {
               ) : incomeCategories.map((c, i) => (
                 <div key={c.id} className={`cat-row ${i > 0 ? 'cat-row-border' : ''}`}>
                   <span className="cat-icon">{c.icon || '💼'}</span>
-                  <span className="cat-name">{c.name}</span>
+                  <div className="cat-info">
+                    <span className="cat-name">{c.name}</span>
+                    {c.memo && <span className="cat-memo">{c.memo}</span>}
+                  </div>
+                  <button className="btn btn-ghost btn-sm" onClick={() => openEditCategory(c)}>編集</button>
                   <button className="btn btn-danger btn-sm" onClick={() => handleDeleteCat(c.id)}>削除</button>
                 </div>
               ))}
@@ -209,7 +237,7 @@ export default function Members() {
         <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowCatModal(false); }}>
           <div className="modal">
             <div className="modal-header">
-              <h2 className="modal-title">カテゴリを追加</h2>
+              <h2 className="modal-title">{editingCategory ? 'カテゴリを編集' : 'カテゴリを追加'}</h2>
               <button className="modal-close" onClick={() => setShowCatModal(false)}>✕</button>
             </div>
             <div className="form-group">
@@ -229,10 +257,15 @@ export default function Members() {
               <input type="text" className="form-control" placeholder="例: 🍜"
                 value={catIcon} onChange={e => setCatIcon(e.target.value)} />
             </div>
+            <div className="form-group">
+              <label className="form-label">メモ</label>
+              <input type="text" className="form-control" placeholder="任意のメモ"
+                value={catMemo} onChange={e => setCatMemo(e.target.value)} />
+            </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={() => setShowCatModal(false)}>キャンセル</button>
               <button className="btn btn-primary" onClick={saveCategory} disabled={saving || !catName.trim()}>
-                {saving ? '保存中...' : '追加'}
+                {saving ? '保存中...' : editingCategory ? '保存' : '追加'}
               </button>
             </div>
           </div>
@@ -303,9 +336,22 @@ export default function Members() {
           width: 32px;
           text-align: center;
         }
-        .cat-name {
+        .cat-info {
           flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+        .cat-name {
           font-weight: 500;
+        }
+        .cat-memo {
+          font-size: 12px;
+          color: var(--color-text-secondary);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       `}</style>
     </div>
