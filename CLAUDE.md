@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-家族で共有できる家計簿アプリ (Family household account book app). The entire app lives under `household account book app/` (note the space in the directory name).
+家族で共有できる家計簿アプリ (Family household account book app). The entire app lives under `household_account_book_app/`.
 
 ## Commands
 
 ### Full stack (Docker)
 
 ```bash
-cd "household account book app"
+cd household_account_book_app
 docker-compose up --build
 ```
 
@@ -22,7 +22,7 @@ docker-compose up --build
 ### Backend only
 
 ```bash
-cd "household account book app/backend"
+cd household_account_book_app/backend
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
@@ -30,7 +30,7 @@ uvicorn main:app --reload
 ### Frontend only
 
 ```bash
-cd "household account book app/frontend"
+cd household_account_book_app/frontend
 npm install
 npm run dev       # dev server on :3000
 npm run build     # tsc + vite build
@@ -64,8 +64,24 @@ Pages:
 
 TypeScript types in `types/index.ts` correspond directly to backend Pydantic response schemas.
 
+## Logging
+
+`backend/logger.py` sets up two loggers that write to date-stamped files under the log directory:
+
+| Logger | File pattern | Content |
+|---|---|---|
+| `db_logger` | `db_YYYY-MM-DD.log` | DB write operations (create / update / delete) with the full payload |
+| `error_logger` | `error_YYYY-MM-DD.log` | Exceptions from DB operations and unhandled HTTP errors |
+
+Files rotate automatically at midnight — a new file is created each day.
+
+- Log directory defaults to `/app/logs` inside the container; override with the `LOG_DIR` env var.
+- `main.py` registers a global `exception_handler` that catches all unhandled exceptions, writes them to `error_logger`, and returns HTTP 500.
+- Each router (`transactions`, `members`, `categories`) wraps write operations in try/except: success → `db_logger.info`, failure → `error_logger.error` + re-raise.
+
 ## Key Configuration
 
 - `DATABASE_URL` env var controls the SQLite path (default `sqlite:///./data/kakeibo.db`)
+- `LOG_DIR` env var controls the log output directory (default `/app/logs`)
 - `VITE_API_URL` env var is set in docker-compose but the frontend actually uses the Vite dev proxy (`/api`), not this env var directly
 - CORS is fully open (`allow_origins=["*"]`) to support access from phones on the same Wi-Fi
