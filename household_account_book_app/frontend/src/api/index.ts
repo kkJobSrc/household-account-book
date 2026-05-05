@@ -9,8 +9,8 @@ export const deleteMember = (id: number) => api.delete(`/members/${id}`);
 
 // Categories
 export const getCategories = (type?: string) => api.get<Category[]>('/categories/', { params: type ? { type } : {} }).then(r => r.data);
-export const createCategory = (data: { name: string; type: string; icon?: string }) => api.post<Category>('/categories/', data).then(r => r.data);
-export const updateCategory = (id: number, data: Partial<{ name: string; icon: string }>) => api.put<Category>(`/categories/${id}`, data).then(r => r.data);
+export const createCategory = (data: { name: string; type: string; icon?: string; memo?: string }) => api.post<Category>('/categories/', data).then(r => r.data);
+export const updateCategory = (id: number, data: Partial<{ name: string; type: string; icon: string; memo: string }>) => api.put<Category>(`/categories/${id}`, data).then(r => r.data);
 export const deleteCategory = (id: number) => api.delete(`/categories/${id}`);
 
 // Transactions

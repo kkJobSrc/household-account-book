@@ -37,6 +37,7 @@ class CategoryBase(BaseModel):
     name: str
     type: TransactionType
     icon: str = ""
+    memo: str = ""
 
 
 class CategoryCreate(CategoryBase):
@@ -47,6 +48,7 @@ class CategoryUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[TransactionType] = None
     icon: Optional[str] = None
+    memo: Optional[str] = None
 
 
 class CategoryResponse(CategoryBase):

@@ -28,6 +28,7 @@ class Category(Base):
     name = Column(String, nullable=False)
     type = Column(Enum(TransactionType), nullable=False)
     icon = Column(String, default="")
+    memo = Column(String, default="")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     transactions = relationship("Transaction", back_populates="category")
