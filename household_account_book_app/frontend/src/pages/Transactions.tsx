@@ -95,6 +95,8 @@ export default function Transactions() {
       }
       setShowModal(false);
       load();
+    } catch {
+      alert('保存に失敗しました。通信状況を確認してください。');
     } finally {
       setSaving(false);
     }
