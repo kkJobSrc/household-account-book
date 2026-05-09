@@ -227,7 +227,7 @@ export default function Transactions() {
                 placeholder="0"
                 value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                min="0"
+                min="1"
                 autoFocus
               />
             </div>

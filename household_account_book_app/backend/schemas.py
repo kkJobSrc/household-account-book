@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 import datetime
 from enum import Enum
@@ -62,7 +62,7 @@ class CategoryResponse(CategoryBase):
 # Transaction schemas
 class TransactionBase(BaseModel):
     type: TransactionType
-    amount: float
+    amount: float = Field(gt=0)
     date: datetime.date
     memo: str = ""
     member_id: Optional[int] = None
