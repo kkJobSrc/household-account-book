@@ -125,6 +125,7 @@ export default function Transactions() {
 
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const totalDeduction = transactions.filter(t => t.type === 'deduction').reduce((s, t) => s + t.amount, 0);
 
   return (
     <div>
@@ -148,14 +149,16 @@ export default function Transactions() {
         <span className="tx-summary-sep">|</span>
         <span className="amount-expense">支出 ¥{formatAmount(totalExpense)}</span>
         <span className="tx-summary-sep">|</span>
-        <span className={totalIncome - totalExpense >= 0 ? 'amount-income' : 'amount-expense'}>
-          収支 {totalIncome - totalExpense >= 0 ? '+' : ''}¥{formatAmount(totalIncome - totalExpense)}
+        <span className="amount-deduction">控除 ¥{formatAmount(totalDeduction)}</span>
+        <span className="tx-summary-sep">|</span>
+        <span className={totalIncome - (totalExpense + totalDeduction) >= 0 ? 'amount-income' : 'amount-expense'}>
+          収支 {totalIncome - (totalExpense + totalDeduction) >= 0 ? '+' : ''}¥{formatAmount(totalIncome - (totalExpense + totalDeduction))}
         </span>
       </div>
 
       {/* Type Filter */}
       <div className="tabs" style={{ marginBottom: 16 }}>
-        {[['all','すべて'],['expense','支出'],['income','収入']].map(([v,l]) => (
+        {[['all','すべて'],['expense','支出'],['income','収入'],['deduction','控除']].map(([v,l]) => (
           <button key={v} className={`tab ${filterType === v ? 'active' : ''}`} onClick={() => setFilterType(v)}>
             {l}
           </button>
@@ -177,7 +180,7 @@ export default function Transactions() {
           {transactions.map((tx, i) => (
             <div key={tx.id} className={`tx-item ${i > 0 ? 'tx-item-border' : ''}`}>
               <div className="tx-icon-lg">
-                {tx.category?.icon || (tx.type === 'income' ? '💰' : '💸')}
+                {tx.category?.icon || (tx.type === 'income' ? '💰' : tx.type === 'deduction' ? '📋' : '💸')}
               </div>
               <div className="tx-item-info">
                 <div className="tx-item-top">
@@ -192,7 +195,7 @@ export default function Transactions() {
                 <div className="tx-item-date">{format(parseISO(tx.date), 'M月d日(EEE)', { locale: ja })}</div>
               </div>
               <div className="tx-item-right">
-                <div className={`tx-item-amount ${tx.type === 'income' ? 'amount-income' : 'amount-expense'}`}>
+                <div className={`tx-item-amount ${tx.type === 'income' ? 'amount-income' : tx.type === 'deduction' ? 'amount-deduction' : 'amount-expense'}`}>
                   {tx.type === 'income' ? '+' : '-'}¥{formatAmount(tx.amount)}
                 </div>
                 <div className="tx-item-actions">
@@ -219,6 +222,8 @@ export default function Transactions() {
                 onClick={() => setForm(f => ({ ...f, type: 'expense', category_id: '' }))}>支出</button>
               <button className={`tab ${form.type === 'income' ? 'active' : ''}`}
                 onClick={() => setForm(f => ({ ...f, type: 'income', category_id: '' }))}>収入</button>
+              <button className={`tab ${form.type === 'deduction' ? 'active' : ''}`}
+                onClick={() => setForm(f => ({ ...f, type: 'deduction', category_id: '' }))}>控除</button>
             </div>
 
             <div className="form-group">
@@ -374,6 +379,9 @@ export default function Transactions() {
         }
         .tx-item-amount {
           font-size: 16px;
+        }
+        .amount-deduction {
+          color: #d97706;
         }
         .tx-item-actions {
           display: flex;

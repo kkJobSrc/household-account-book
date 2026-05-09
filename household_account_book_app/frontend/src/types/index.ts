@@ -1,4 +1,4 @@
-export type TransactionType = 'income' | 'expense';
+export type TransactionType = 'income' | 'expense' | 'deduction';
 
 export interface Member {
   id: number;
@@ -43,6 +43,7 @@ export interface MonthlySummary {
   month: number;
   total_income: number;
   total_expense: number;
+  total_deduction: number;
   balance: number;
 }
 
@@ -58,6 +59,7 @@ export interface MemberSummary {
   member_name: string;
   total_expense: number;
   total_income: number;
+  total_deduction: number;
 }
 
 export interface MonthlyReport {
@@ -72,5 +74,6 @@ export interface MonthlyTrend {
   month: number;
   total_income: number;
   total_expense: number;
+  total_deduction: number;
   balance: number;
 }
