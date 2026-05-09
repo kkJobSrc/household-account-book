@@ -139,6 +139,13 @@ def get_trend(
         )
 
     if specified_count == 4:
+        start_date_check = date(start_year, start_month, 1)
+        end_date_first = date(end_year, end_month, 1)
+        if end_date_first < start_date_check:
+            raise HTTPException(
+                status_code=422,
+                detail='終了月は開始月以降を指定してください'
+            )
         start_date = date(start_year, start_month, 1)
         if end_month == 12:
             end_date_exclusive = date(end_year + 1, 1, 1)
@@ -211,6 +218,13 @@ def get_range_summary(
         )
 
     if specified_count == 4:
+        start_date_check = date(start_year, start_month, 1)
+        end_date_first = date(end_year, end_month, 1)
+        if end_date_first < start_date_check:
+            raise HTTPException(
+                status_code=422,
+                detail='終了月は開始月以降を指定してください'
+            )
         start_date = date(start_year, start_month, 1)
         if end_month == 12:
             end_date_exclusive = date(end_year + 1, 1, 1)
@@ -233,7 +247,11 @@ def get_range_summary(
         *filters, models.Transaction.type == 'expense'
     ).scalar() or 0
 
-    balance = total_income - total_expense
+    total_deduction = db.query(func.sum(models.Transaction.amount)).filter(
+        *filters, models.Transaction.type == 'deduction'
+    ).scalar() or 0
+
+    balance = total_income - (total_expense + total_deduction)
 
     cat_rows = db.query(
         models.Transaction.category_id,
@@ -294,6 +312,7 @@ def get_range_summary(
         period_label=period_label,
         total_income=total_income,
         total_expense=total_expense,
+        total_deduction=total_deduction,
         balance=balance,
         by_category=by_category,
         by_member=by_member

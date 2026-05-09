@@ -97,6 +97,7 @@ export interface RangeSummaryResponse {
   period_label: string;
   total_income: number;
   total_expense: number;
+  total_deduction: number;
   balance: number;
   by_category: RangeSummaryByCat[];
   by_member: RangeSummaryByMember[];

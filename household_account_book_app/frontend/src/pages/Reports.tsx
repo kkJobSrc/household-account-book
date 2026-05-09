@@ -330,6 +330,12 @@ export default function Reports() {
                   </div>
                 </div>
                 <div className="card report-card">
+                  <div className="report-card-label">控除額</div>
+                  <div className="report-card-amount amount-expense">
+                    ¥{formatAmount(rangeData.total_deduction)}
+                  </div>
+                </div>
+                <div className="card report-card">
                   <div className="report-card-label">収支</div>
                   <div className={`report-card-amount ${rangeData.balance >= 0 ? 'amount-income' : 'amount-expense'}`}>
                     {rangeData.balance >= 0 ? '+' : ''}¥{formatAmount(rangeData.balance)}

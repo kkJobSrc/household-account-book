@@ -153,6 +153,7 @@ class RangeSummaryResponse(BaseModel):
     period_label: str
     total_income: float
     total_expense: float
+    total_deduction: float
     balance: float
     by_category: List[RangeSummaryByCat]
     by_member: List[RangeSummaryByMember]
