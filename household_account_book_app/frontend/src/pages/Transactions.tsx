@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getTransactions, getMembers, getCategories, createTransaction, updateTransaction, deleteTransaction } from '../api';
 import type { Transaction, Member, Category, TransactionType } from '../types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 const formatAmount = (n: number) => n.toLocaleString('ja-JP');
@@ -189,7 +189,7 @@ export default function Transactions() {
                   )}
                 </div>
                 {tx.memo && <div className="tx-item-memo">{tx.memo}</div>}
-                <div className="tx-item-date">{format(new Date(tx.date), 'M月d日(EEE)', { locale: ja })}</div>
+                <div className="tx-item-date">{format(parseISO(tx.date), 'M月d日(EEE)', { locale: ja })}</div>
               </div>
               <div className="tx-item-right">
                 <div className={`tx-item-amount ${tx.type === 'income' ? 'amount-income' : 'amount-expense'}`}>
