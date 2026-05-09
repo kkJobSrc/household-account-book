@@ -1,5 +1,5 @@
 import api from './client';
-import type { Member, Category, Transaction, TransactionCreate, MonthlyReport, MonthlyTrend } from '../types';
+import type { Member, Category, Transaction, TransactionCreate, MonthlyReport, MonthlyTrend, RangeSummaryResponse } from '../types';
 
 // Members
 export const getMembers = () => api.get<Member[]>('/members/').then(r => r.data);
@@ -29,4 +29,18 @@ export const deleteTransaction = (id: number) => api.delete(`/transactions/${id}
 
 // Reports
 export const getMonthlyReport = (year: number, month: number) => api.get<MonthlyReport>(`/reports/monthly/${year}/${month}`).then(r => r.data);
-export const getTrend = (months?: number) => api.get<MonthlyTrend[]>('/reports/trend', { params: months ? { months } : {} }).then(r => r.data);
+
+export const getTrend = (params?: {
+  months?: number;
+  start_year?: number;
+  start_month?: number;
+  end_year?: number;
+  end_month?: number;
+}) => api.get<MonthlyTrend[]>('/reports/trend', { params }).then(r => r.data);
+
+export const getRangeSummary = (params?: {
+  start_year?: number;
+  start_month?: number;
+  end_year?: number;
+  end_month?: number;
+}) => api.get<RangeSummaryResponse>('/reports/range', { params }).then(r => r.data);

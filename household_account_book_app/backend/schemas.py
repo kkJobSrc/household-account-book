@@ -132,3 +132,27 @@ class MonthlyTrend(BaseModel):
     total_expense: float
     total_deduction: float = 0
     balance: float
+
+
+class RangeSummaryByCat(BaseModel):
+    category_id: Optional[int]
+    category_name: str
+    type: TransactionType
+    total: float
+
+
+class RangeSummaryByMember(BaseModel):
+    member_id: Optional[int]
+    member_name: str
+    color: str
+    total_income: float
+    total_expense: float
+
+
+class RangeSummaryResponse(BaseModel):
+    period_label: str
+    total_income: float
+    total_expense: float
+    balance: float
+    by_category: List[RangeSummaryByCat]
+    by_member: List[RangeSummaryByMember]

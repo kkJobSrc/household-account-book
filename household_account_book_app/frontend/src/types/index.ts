@@ -77,3 +77,27 @@ export interface MonthlyTrend {
   total_deduction: number;
   balance: number;
 }
+
+export interface RangeSummaryByCat {
+  category_id: number | null;
+  category_name: string;
+  type: 'income' | 'expense' | 'deduction';
+  total: number;
+}
+
+export interface RangeSummaryByMember {
+  member_id: number | null;
+  member_name: string;
+  color: string;
+  total_income: number;
+  total_expense: number;
+}
+
+export interface RangeSummaryResponse {
+  period_label: string;
+  total_income: number;
+  total_expense: number;
+  balance: number;
+  by_category: RangeSummaryByCat[];
+  by_member: RangeSummaryByMember[];
+}
