@@ -117,6 +117,8 @@ export default function Transactions() {
     else setMonth(m => m - 1);
   };
   const nextMonth = () => {
+    const now = new Date();
+    if (year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth() + 1)) return;
     if (month === 12) { setYear(y => y + 1); setMonth(1); }
     else setMonth(m => m + 1);
   };
