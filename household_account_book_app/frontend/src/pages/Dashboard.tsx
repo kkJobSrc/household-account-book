@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [report, setReport] = useState<MonthlyReport | null>(null);
   const [recent, setRecent] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const year = now.getFullYear();
@@ -22,10 +23,11 @@ export default function Dashboard() {
     ]).then(([rep, txs]) => {
       setReport(rep);
       setRecent(txs);
-    }).finally(() => setLoading(false));
+    }).catch(() => setError(true)).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="loading">読み込み中...</div>;
+  if (error) return <div className="loading">データの取得に失敗しました。ページを更新してください。</div>;
 
   const summary = report?.summary;
 

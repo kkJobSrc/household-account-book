@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getTransactions, getMembers, getCategories, createTransaction, updateTransaction, deleteTransaction } from '../api';
 import type { Transaction, Member, Category, TransactionType } from '../types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 const formatAmount = (n: number) => n.toLocaleString('ja-JP');
@@ -95,6 +95,8 @@ export default function Transactions() {
       }
       setShowModal(false);
       load();
+    } catch {
+      alert('保存に失敗しました。通信状況を確認してください。');
     } finally {
       setSaving(false);
     }
@@ -102,8 +104,12 @@ export default function Transactions() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('この記録を削除しますか？')) return;
-    await deleteTransaction(id);
-    load();
+    try {
+      await deleteTransaction(id);
+      load();
+    } catch {
+      alert('削除に失敗しました。通信状況を確認してください。');
+    }
   };
 
   const prevMonth = () => {
@@ -111,6 +117,8 @@ export default function Transactions() {
     else setMonth(m => m - 1);
   };
   const nextMonth = () => {
+    const now = new Date();
+    if (year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth() + 1)) return;
     if (month === 12) { setYear(y => y + 1); setMonth(1); }
     else setMonth(m => m + 1);
   };
@@ -181,7 +189,7 @@ export default function Transactions() {
                   )}
                 </div>
                 {tx.memo && <div className="tx-item-memo">{tx.memo}</div>}
-                <div className="tx-item-date">{format(new Date(tx.date), 'M月d日(EEE)', { locale: ja })}</div>
+                <div className="tx-item-date">{format(parseISO(tx.date), 'M月d日(EEE)', { locale: ja })}</div>
               </div>
               <div className="tx-item-right">
                 <div className={`tx-item-amount ${tx.type === 'income' ? 'amount-income' : 'amount-expense'}`}>
@@ -221,7 +229,7 @@ export default function Transactions() {
                 placeholder="0"
                 value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                min="0"
+                min="1"
                 autoFocus
               />
             </div>
@@ -273,7 +281,7 @@ export default function Transactions() {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <button className="btn btn-ghost" onClick={() => setShowModal(false)}>キャンセル</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.amount}>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.amount || !form.date}>
                 {saving ? '保存中...' : '保存'}
               </button>
             </div>

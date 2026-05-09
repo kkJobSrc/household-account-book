@@ -1,6 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import date, datetime
+import datetime
 from enum import Enum
 
 
@@ -26,7 +26,7 @@ class MemberUpdate(BaseModel):
 
 class MemberResponse(MemberBase):
     id: int
-    created_at: datetime
+    created_at: datetime.datetime
 
     class Config:
         from_attributes = True
@@ -53,7 +53,7 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(CategoryBase):
     id: int
-    created_at: datetime
+    created_at: datetime.datetime
 
     class Config:
         from_attributes = True
@@ -62,8 +62,8 @@ class CategoryResponse(CategoryBase):
 # Transaction schemas
 class TransactionBase(BaseModel):
     type: TransactionType
-    amount: float
-    date: date
+    amount: float = Field(gt=0)
+    date: datetime.date
     memo: str = ""
     member_id: Optional[int] = None
     category_id: Optional[int] = None
@@ -76,7 +76,7 @@ class TransactionCreate(TransactionBase):
 class TransactionUpdate(BaseModel):
     type: Optional[TransactionType] = None
     amount: Optional[float] = None
-    date: Optional[date] = None
+    date: Optional[datetime.date] = None
     memo: Optional[str] = None
     member_id: Optional[int] = None
     category_id: Optional[int] = None
@@ -84,7 +84,7 @@ class TransactionUpdate(BaseModel):
 
 class TransactionResponse(TransactionBase):
     id: int
-    created_at: datetime
+    created_at: datetime.datetime
     member: Optional[MemberResponse] = None
     category: Optional[CategoryResponse] = None
 
