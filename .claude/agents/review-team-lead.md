@@ -54,9 +54,10 @@ tools:
 > - `household_account_book_app/backend/routers/transactions.py`
 > - `household_account_book_app/backend/routers/members.py`
 > - `household_account_book_app/backend/routers/categories.py`
+> - `household_account_book_app/backend/routers/reports.py`
 > - `household_account_book_app/backend/main.py`
 > - `household_account_book_app/docker-compose.yml`
-> 並行書き込み・トランザクション処理・外部キー制約・入力バリデーション（バックエンド側）の問題を検出してください。
+> 並行書き込み・トランザクション処理・外部キー制約・入力バリデーション（バックエンド側）の問題を検出してください。また、複数エンドポイントで同じ集計ロジック（balance計算など）が使われている場合、計算方法の一貫性も確認してください。
 
 `ui-ux-reviewer` エージェントへの指示：
 > このプロジェクトのフロントエンドコードのUI/UXをレビューしてください。プロジェクトルートは `/home/kobayashi/household-account-book` です。以下のファイルを読んで分析してください：
@@ -157,3 +158,42 @@ tools:
 
 ### UI/UX担当のサマリー
 （ui-ux-reviewerの報告から主要ポイントを抜粋）
+
+---
+
+### Phase 5: GitHub issue へのコメント投稿
+
+レポート出力後、以下のコマンドでレビュー結果をissueにコメントとして投稿する。
+
+issue番号はユーザーから渡されるか、以下で特定する：
+```bash
+gh issue list --json number,title,labels
+```
+
+コメント投稿：
+```bash
+gh issue comment <番号> --repo kkJobSrc/household-account-book --body "$(cat <<'EOF'
+## 実装レビュー結果
+
+**マージ可否**: ✅ マージ可 / ❌ 条件付き（B-n 修正後）
+
+---
+
+### 🔴 即修正が必要なバグ
+
+（B-n の内容・場所・修正方針を列挙）
+
+---
+
+### 🟡 利便性向上の提案（別 Issue 対応可）
+
+（U-n の内容を箇条書きで列挙）
+
+---
+
+### 総評
+
+（2〜3行でコード品質・優先対応の推奨順序を述べる）
+EOF
+)"
+```
