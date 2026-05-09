@@ -7,6 +7,7 @@ from enum import Enum
 class TransactionType(str, Enum):
     income = "income"
     expense = "expense"
+    deduction = "deduction"
 
 
 # Member schemas
@@ -75,7 +76,7 @@ class TransactionCreate(TransactionBase):
 
 class TransactionUpdate(BaseModel):
     type: Optional[TransactionType] = None
-    amount: Optional[float] = None
+    amount: Optional[float] = Field(default=None, gt=0)
     date: Optional[datetime.date] = None
     memo: Optional[str] = None
     member_id: Optional[int] = None
@@ -98,6 +99,7 @@ class MonthlySummary(BaseModel):
     month: int
     total_income: float
     total_expense: float
+    total_deduction: float
     balance: float
 
 
@@ -113,6 +115,7 @@ class MemberSummary(BaseModel):
     member_name: str
     total_expense: float
     total_income: float
+    total_deduction: float = 0
 
 
 class MonthlyReport(BaseModel):
@@ -127,4 +130,5 @@ class MonthlyTrend(BaseModel):
     month: int
     total_income: float
     total_expense: float
+    total_deduction: float = 0
     balance: float

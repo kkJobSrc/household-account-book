@@ -8,6 +8,7 @@ from database import Base
 class TransactionType(str, enum.Enum):
     income = "income"
     expense = "expense"
+    deduction = "deduction"
 
 
 class Member(Base):

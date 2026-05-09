@@ -29,8 +29,16 @@ def seed():
         {"name": "副収入", "type": "income", "icon": "💰"},
         {"name": "その他収入", "type": "income", "icon": "🎁"},
     ]
+    # デフォルトカテゴリ（控除）
+    deduction_categories = [
+        {"name": "所得税", "type": "deduction", "icon": "🏛️"},
+        {"name": "住民税", "type": "deduction", "icon": "🏛️"},
+        {"name": "健康保険", "type": "deduction", "icon": "🏥"},
+        {"name": "厚生年金", "type": "deduction", "icon": "📋"},
+        {"name": "その他控除", "type": "deduction", "icon": "📄"},
+    ]
 
-    for cat in expense_categories + income_categories:
+    for cat in expense_categories + income_categories + deduction_categories:
         db.add(models.Category(**cat))
 
     db.commit()
