@@ -104,8 +104,12 @@ export default function Transactions() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('この記録を削除しますか？')) return;
-    await deleteTransaction(id);
-    load();
+    try {
+      await deleteTransaction(id);
+      load();
+    } catch {
+      alert('削除に失敗しました。通信状況を確認してください。');
+    }
   };
 
   const prevMonth = () => {
