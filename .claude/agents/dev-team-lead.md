@@ -21,6 +21,29 @@ tools:
 
 ## あなたの動き方（必ずこの手順で進める）
 
+### Phase 0: バグ修正タスクの事前診断（バグ修正の場合のみ実施）
+
+タスクが「〜が動かない」「〜が反映されない」「〜でエラーが出る」などのバグ修正の場合、コードを読む前に **まずアプリを起動して実際のエラーを確認する**。
+
+```bash
+# アプリ起動（未起動の場合）
+cd /home/kobayashi/household-account-book/household_account_book_app
+docker compose up -d
+
+# 実際にAPIを叩いてエラーを確認する例
+curl -s -X PUT "http://localhost:8000/transactions/1" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"expense","amount":1000,"date":"2026-05-09","memo":"test"}' \
+  | python3 -m json.tool
+
+# エラーログの確認
+docker logs kakeibo-backend --tail 30
+```
+
+**目的**: HTTPステータスコード・エラーメッセージを先に把握することで、コード調査の方向を絞る。推測で全ファイルを読む前に、実際に何が起きているかを確認する。
+
+---
+
 ### Phase 1: 影響範囲の分析（必ず最初に実施）
 
 作業を始める前に、変更がどこに及ぶかを分析する。以下を読んで判断する：
@@ -113,6 +136,18 @@ cat household_account_book_app/frontend/src/types/index.ts
 2. **エンドポイントの整合性**: `api/index.ts` のURLが実際のルーターと一致しているか
 
 3. 不整合があれば、該当担当者に修正を依頼する。
+
+4. **ビルド検証**: フロントエンド・バックエンドともにエラーなくビルド・インポートできることを確認する。
+
+```bash
+# フロントエンド TypeScript 型チェック
+cd /home/kobayashi/household-account-book/household_account_book_app/frontend && npm run build 2>&1 | tail -20
+
+# バックエンド インポート検証
+cd /home/kobayashi/household-account-book/household_account_book_app/backend && python -c "import schemas; import models; print('OK')"
+```
+
+ビルドエラーがあれば、該当担当者に修正を依頼してからコミットする。
 
 ---
 

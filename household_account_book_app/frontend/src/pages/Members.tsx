@@ -53,6 +53,8 @@ export default function Members() {
       }
       setShowMemberModal(false);
       loadMembers();
+    } catch {
+      alert('保存に失敗しました。通信状況を確認してください。');
     } finally {
       setSaving(false);
     }
@@ -60,8 +62,12 @@ export default function Members() {
 
   const handleDeleteMember = async (id: number) => {
     if (!confirm('このメンバーを削除しますか？')) return;
-    await deleteMember(id);
-    loadMembers();
+    try {
+      await deleteMember(id);
+      loadMembers();
+    } catch {
+      alert('削除に失敗しました。通信状況を確認してください。');
+    }
   };
 
   const openCreateCategory = () => {
@@ -90,6 +96,8 @@ export default function Members() {
       }
       setShowCatModal(false);
       loadCategories();
+    } catch {
+      alert('保存に失敗しました。通信状況を確認してください。');
     } finally {
       setSaving(false);
     }
@@ -97,8 +105,12 @@ export default function Members() {
 
   const handleDeleteCat = async (id: number) => {
     if (!confirm('このカテゴリを削除しますか？')) return;
-    await deleteCategory(id);
-    loadCategories();
+    try {
+      await deleteCategory(id);
+      loadCategories();
+    } catch {
+      alert('削除に失敗しました。通信状況を確認してください。');
+    }
   };
 
   const expenseCategories = categories.filter(c => c.type === 'expense');
