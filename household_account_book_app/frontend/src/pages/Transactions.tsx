@@ -279,7 +279,7 @@ export default function Transactions() {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
               <button className="btn btn-ghost" onClick={() => setShowModal(false)}>キャンセル</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.amount}>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.amount || !form.date}>
                 {saving ? '保存中...' : '保存'}
               </button>
             </div>
