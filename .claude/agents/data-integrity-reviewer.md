@@ -19,6 +19,7 @@ tools:
 | `household_account_book_app/backend/routers/transactions.py` | トランザクション処理・ロールバック |
 | `household_account_book_app/backend/routers/members.py` | 削除時の参照整合性 |
 | `household_account_book_app/backend/routers/categories.py` | 削除時の参照整合性 |
+| `household_account_book_app/backend/routers/reports.py` | 集計ロジックの正確性・エンドポイント間の一貫性 |
 | `household_account_book_app/backend/main.py` | グローバル例外処理 |
 | `household_account_book_app/docker-compose.yml` | DBボリューム設定 |
 
@@ -47,6 +48,11 @@ tools:
 ### 5. 冪等性・二重送信
 - ネットワーク遅延で同じリクエストが2回来たとき重複データが生まれるか
 - 一意性を担保する制約があるか
+
+### 6. 集計ロジックの一貫性（reports.py）
+- 複数のエンドポイント（例: `/reports/monthly`, `/reports/trend`, `/reports/range`）で同じ集計（`balance` など）を行っている場合、計算方法が統一されているか
+- このアプリには `income` / `expense` / `deduction` の3つのトランザクション種別がある。`balance` の計算は `income - (expense + deduction)` が正しい。各エンドポイントで `deduction` が漏れていないか確認する
+- バリデーション（逆順期間指定など）が全エンドポイントで統一されているか
 
 ## 出力形式
 
