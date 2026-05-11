@@ -4,7 +4,7 @@
 
 ## 機能
 
-- **収支管理**: 日付・カテゴリ・メンバー別に収入・支出を記録
+- **収支管理**: 日付・カテゴリ・メンバー別に収入・支出・控除を記録
 - **月次レポート**: 支出の円グラフ・月次推移のバーチャート
 - **家族メンバー管理**: メンバーごとに色付きで管理
 - **カテゴリ管理**: 支出・収入カテゴリをカスタマイズ
@@ -56,6 +56,8 @@ ifconfig
 
 **収入**: 給与、副収入、その他収入
 
+**控除**: 所得税、住民税、健康保険、厚生年金、その他控除
+
 ## ログ
 
 バックエンドは2種類のログファイルを日付ごとに出力します。
@@ -99,14 +101,15 @@ erDiagram
     categories {
         INTEGER id   PK
         STRING  name
-        ENUM    type "income | expense"
+        ENUM    type "income | expense | deduction"
         STRING  icon
+        STRING  memo
         DATETIME created_at
     }
 
     transactions {
         INTEGER  id          PK
-        ENUM     type        "income | expense"
+        ENUM     type        "income | expense | deduction"
         FLOAT    amount
         DATE     date
         STRING   memo

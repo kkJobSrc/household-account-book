@@ -14,6 +14,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  // アコーディオン開閉状態
+  const [netIncomeOpen, setNetIncomeOpen] = useState(false);
+  const [expenseRateOpen, setExpenseRateOpen] = useState(false);
+
   useEffect(() => {
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
@@ -31,6 +35,17 @@ export default function Dashboard() {
 
   const summary = report?.summary;
 
+  // 手取り = 収入 - 控除
+  const totalIncome = summary?.total_income ?? 0;
+  const totalDeduction = summary?.total_deduction ?? 0;
+  const totalExpense = summary?.total_expense ?? 0;
+  const netIncome = totalIncome - totalDeduction;
+
+  // 支出率 = 支出 / 手取り * 100（手取りが0以下なら "--"）
+  const expenseRateDisplay = netIncome > 0
+    ? `${(totalExpense / netIncome * 100).toFixed(1)}%`
+    : '--';
+
   return (
     <div>
       <div className="page-header">
@@ -44,24 +59,99 @@ export default function Dashboard() {
 
       {/* Summary Cards */}
       <div className="dashboard-grid">
-        <div className="card summary-card">
-          <div className="summary-label">収入</div>
-          <div className="summary-amount amount-income">
-            ¥{formatAmount(summary?.total_income ?? 0)}
+
+        {/* 手取りアコーディオンカード */}
+        <div
+          className="card summary-card accordion-card"
+          onClick={() => setNetIncomeOpen(o => !o)}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setNetIncomeOpen(o => !o); }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={netIncomeOpen}
+        >
+          <div className="accordion-header">
+            <div>
+              <div className="summary-label">手取り</div>
+              <div className="summary-amount amount-income">
+                ¥{formatAmount(netIncome)}
+              </div>
+            </div>
+            <span className="accordion-toggle">{netIncomeOpen ? '△' : '▽'}</span>
           </div>
+          {netIncomeOpen && (
+            <ul className="accordion-detail-list">
+              <li className="accordion-detail-item">
+                <span className="accordion-detail-label">収入</span>
+                <span className="accordion-detail-value amount-income">¥{formatAmount(totalIncome)}</span>
+              </li>
+              <li className="accordion-detail-item">
+                <span className="accordion-detail-label">控除</span>
+                <span className="accordion-detail-value amount-expense">¥{formatAmount(totalDeduction)}</span>
+              </li>
+            </ul>
+          )}
         </div>
+
+        {/* 支出カード（変更なし） */}
         <div className="card summary-card">
           <div className="summary-label">支出</div>
           <div className="summary-amount amount-expense">
             ¥{formatAmount(summary?.total_expense ?? 0)}
           </div>
         </div>
+
+        {/* 収支カード（変更なし） */}
         <div className="card summary-card summary-card-balance">
           <div className="summary-label">収支</div>
           <div className={`summary-amount ${(summary?.balance ?? 0) >= 0 ? 'amount-income' : 'amount-expense'}`}>
             {(summary?.balance ?? 0) >= 0 ? '+' : ''}¥{formatAmount(summary?.balance ?? 0)}
           </div>
         </div>
+
+        {/* 支出率アコーディオンカード */}
+        <div
+          className="card summary-card accordion-card summary-card-expense-rate"
+          onClick={() => setExpenseRateOpen(o => !o)}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setExpenseRateOpen(o => !o); }}
+          role="button"
+          tabIndex={0}
+          aria-expanded={expenseRateOpen}
+        >
+          <div className="accordion-header">
+            <div>
+              <div className="summary-label">支出率</div>
+              <div className={`summary-amount ${netIncome > 0 ? 'amount-expense' : ''}`}>
+                {expenseRateDisplay}
+              </div>
+            </div>
+            <span className="accordion-toggle">{expenseRateOpen ? '△' : '▽'}</span>
+          </div>
+          {expenseRateOpen && (
+            <ul className="accordion-detail-list">
+              {report && report.by_member.length > 0 ? (
+                report.by_member
+                  .sort((a, b) => b.total_expense - a.total_expense)
+                  .map((m, i) => {
+                    const memberNet = m.total_income - m.total_deduction;
+                    const memberRateDisplay = memberNet > 0
+                      ? `${(m.total_expense / memberNet * 100).toFixed(1)}%`
+                      : '--';
+                    return (
+                      <li key={i} className="accordion-detail-item">
+                        <span className="accordion-detail-label">{m.member_name}</span>
+                        <span className="accordion-detail-value">{memberRateDisplay}</span>
+                      </li>
+                    );
+                  })
+              ) : (
+                <li className="accordion-detail-item">
+                  <span className="accordion-detail-label" style={{ color: 'var(--color-text-secondary)' }}>メンバーデータなし</span>
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+
       </div>
 
       {/* Recent Transactions */}
@@ -87,7 +177,7 @@ export default function Dashboard() {
                   {tx.memo && <div className="tx-memo">{tx.memo}</div>}
                 </div>
                 <div className="tx-right">
-                  <div className={`tx-amount ${tx.type === 'income' ? 'amount-income' : 'amount-expense'}`}>
+                  <div className={`tx-amount ${tx.type === 'income' ? 'amount-income' : tx.type === 'deduction' ? 'amount-deduction' : 'amount-expense'}`}>
                     {tx.type === 'income' ? '+' : '-'}¥{formatAmount(tx.amount)}
                   </div>
                   <div className="tx-date">{format(new Date(tx.date), 'M/d', { locale: ja })}</div>
@@ -127,7 +217,7 @@ export default function Dashboard() {
       <style>{`
         .dashboard-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(4, 1fr);
           gap: 16px;
         }
         @media (max-width: 600px) {
@@ -135,6 +225,9 @@ export default function Dashboard() {
             grid-template-columns: 1fr 1fr;
           }
           .summary-card-balance {
+            grid-column: 1 / -1;
+          }
+          .summary-card-expense-rate {
             grid-column: 1 / -1;
           }
         }
@@ -150,6 +243,47 @@ export default function Dashboard() {
         .summary-amount {
           font-size: 24px;
           font-weight: 800;
+        }
+        .accordion-card {
+          cursor: pointer;
+          user-select: none;
+        }
+        .accordion-card:hover {
+          opacity: 0.85;
+        }
+        .accordion-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+        }
+        .accordion-toggle {
+          font-size: 14px;
+          color: var(--color-text-secondary);
+          margin-top: 4px;
+          flex-shrink: 0;
+        }
+        .accordion-detail-list {
+          list-style: none;
+          margin: 12px 0 0 0;
+          padding: 0;
+          border-top: 1px solid var(--color-border);
+          padding-top: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .accordion-detail-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 13px;
+        }
+        .accordion-detail-label {
+          color: var(--color-text-secondary);
+          font-weight: 500;
+        }
+        .accordion-detail-value {
+          font-weight: 600;
         }
         .section-header {
           display: flex;
