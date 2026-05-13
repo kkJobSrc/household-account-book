@@ -27,6 +27,10 @@ export default function Reports() {
   // タブ
   const [activeTab, setActiveTab] = useState<'monthly' | 'range'>('monthly');
 
+  // 月次タブのアコーディオン開閉状態
+  const [monthlyNetIncomeOpen, setMonthlyNetIncomeOpen] = useState(false);
+  const [monthlyExpenseRateOpen, setMonthlyExpenseRateOpen] = useState(false);
+
   // 期間レポートタブ用state
   const [allPeriod, setAllPeriod] = useState(true);
   const [rangeStartYear, setRangeStartYear] = useState(currentYear);
@@ -36,6 +40,10 @@ export default function Reports() {
   const [rangeData, setRangeData] = useState<RangeSummaryResponse | null>(null);
   const [rangeLoading, setRangeLoading] = useState(false);
   const [rangeError, setRangeError] = useState<string | null>(null);
+
+  // 期間タブのアコーディオン開閉状態
+  const [rangeNetIncomeOpen, setRangeNetIncomeOpen] = useState(false);
+  const [rangeExpenseRateOpen, setRangeExpenseRateOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -105,6 +113,24 @@ export default function Reports() {
   const rangeByCatExpense = rangeData?.by_category.filter(c => c.type === 'expense') ?? [];
   const rangeByCatDeduction = rangeData?.by_category.filter(c => c.type === 'deduction') ?? [];
 
+  // 月次レポート: 手取り・支出率の計算
+  const monthlyTotalIncome = report?.summary.total_income ?? 0;
+  const monthlyTotalDeduction = report?.summary.total_deduction ?? 0;
+  const monthlyTotalExpense = report?.summary.total_expense ?? 0;
+  const monthlyNetIncome = monthlyTotalIncome - monthlyTotalDeduction;
+  const monthlyExpenseRateDisplay = monthlyNetIncome > 0
+    ? `${(monthlyTotalExpense / monthlyNetIncome * 100).toFixed(1)}%`
+    : '--';
+
+  // 期間レポート: 手取り・支出率の計算
+  const rangeTotalIncome = rangeData?.total_income ?? 0;
+  const rangeTotalDeduction = rangeData?.total_deduction ?? 0;
+  const rangeTotalExpense = rangeData?.total_expense ?? 0;
+  const rangeNetIncome = rangeTotalIncome - rangeTotalDeduction;
+  const rangeExpenseRateDisplay = rangeNetIncome > 0
+    ? `${(rangeTotalExpense / rangeNetIncome * 100).toFixed(1)}%`
+    : '--';
+
   return (
     <div>
       <div className="page-header">
@@ -135,30 +161,99 @@ export default function Reports() {
             <>
               {/* Summary */}
               <div className="report-summary-grid">
-                <div className="card report-card">
-                  <div className="report-card-label">収入合計</div>
-                  <div className="report-card-amount amount-income">
-                    ¥{formatAmount(report.summary.total_income)}
+
+                {/* 手取りアコーディオンカード */}
+                <div
+                  className="card report-card report-accordion-card"
+                  onClick={() => setMonthlyNetIncomeOpen(o => !o)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setMonthlyNetIncomeOpen(o => !o); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={monthlyNetIncomeOpen}
+                >
+                  <div className="report-accordion-header">
+                    <div>
+                      <div className="report-card-label">手取り</div>
+                      <div className="report-card-amount amount-income">
+                        ¥{formatAmount(monthlyNetIncome)}
+                      </div>
+                    </div>
+                    <span className="report-accordion-toggle">{monthlyNetIncomeOpen ? '△' : '▽'}</span>
                   </div>
+                  {monthlyNetIncomeOpen && (
+                    <ul className="report-accordion-detail-list">
+                      <li className="report-accordion-detail-item">
+                        <span className="report-accordion-detail-label">収入</span>
+                        <span className="report-accordion-detail-value amount-income">¥{formatAmount(monthlyTotalIncome)}</span>
+                      </li>
+                      <li className="report-accordion-detail-item">
+                        <span className="report-accordion-detail-label">控除</span>
+                        <span className="report-accordion-detail-value amount-expense">¥{formatAmount(monthlyTotalDeduction)}</span>
+                      </li>
+                    </ul>
+                  )}
                 </div>
+
+                {/* 支出合計カード（変更なし） */}
                 <div className="card report-card">
                   <div className="report-card-label">支出合計</div>
                   <div className="report-card-amount amount-expense">
                     ¥{formatAmount(report.summary.total_expense)}
                   </div>
                 </div>
-                <div className="card report-card">
-                  <div className="report-card-label">控除額</div>
-                  <div className="report-card-amount amount-expense">
-                    ¥{formatAmount(report.summary.total_deduction)}
-                  </div>
-                </div>
+
+                {/* 収支カード（変更なし） */}
                 <div className="card report-card">
                   <div className="report-card-label">収支</div>
                   <div className={`report-card-amount ${report.summary.balance >= 0 ? 'amount-income' : 'amount-expense'}`}>
                     {report.summary.balance >= 0 ? '+' : ''}¥{formatAmount(report.summary.balance)}
                   </div>
                 </div>
+
+                {/* 支出率アコーディオンカード */}
+                <div
+                  className="card report-card report-accordion-card"
+                  onClick={() => setMonthlyExpenseRateOpen(o => !o)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setMonthlyExpenseRateOpen(o => !o); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={monthlyExpenseRateOpen}
+                >
+                  <div className="report-accordion-header">
+                    <div>
+                      <div className="report-card-label">支出率</div>
+                      <div className={`report-card-amount ${monthlyNetIncome > 0 ? 'amount-expense' : ''}`}>
+                        {monthlyExpenseRateDisplay}
+                      </div>
+                    </div>
+                    <span className="report-accordion-toggle">{monthlyExpenseRateOpen ? '△' : '▽'}</span>
+                  </div>
+                  {monthlyExpenseRateOpen && (
+                    <ul className="report-accordion-detail-list">
+                      {report.by_member.length > 0 ? (
+                        report.by_member
+                          .sort((a, b) => b.total_expense - a.total_expense)
+                          .map((m, i) => {
+                            const memberNet = m.total_income - m.total_deduction;
+                            const memberRateDisplay = memberNet > 0
+                              ? `${(m.total_expense / memberNet * 100).toFixed(1)}%`
+                              : '--';
+                            return (
+                              <li key={i} className="report-accordion-detail-item">
+                                <span className="report-accordion-detail-label">{m.member_name}</span>
+                                <span className="report-accordion-detail-value">{memberRateDisplay}</span>
+                              </li>
+                            );
+                          })
+                      ) : (
+                        <li className="report-accordion-detail-item">
+                          <span className="report-accordion-detail-label" style={{ color: 'var(--color-text-secondary)' }}>メンバーデータなし</span>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+
               </div>
 
               {/* Expense Pie Chart */}
@@ -317,30 +412,84 @@ export default function Reports() {
 
               {/* Summary Cards */}
               <div className="report-summary-grid">
-                <div className="card report-card">
-                  <div className="report-card-label">収入合計</div>
-                  <div className="report-card-amount amount-income">
-                    ¥{formatAmount(rangeData.total_income)}
+
+                {/* 手取りアコーディオンカード */}
+                <div
+                  className="card report-card report-accordion-card"
+                  onClick={() => setRangeNetIncomeOpen(o => !o)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setRangeNetIncomeOpen(o => !o); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={rangeNetIncomeOpen}
+                >
+                  <div className="report-accordion-header">
+                    <div>
+                      <div className="report-card-label">手取り</div>
+                      <div className="report-card-amount amount-income">
+                        ¥{formatAmount(rangeNetIncome)}
+                      </div>
+                    </div>
+                    <span className="report-accordion-toggle">{rangeNetIncomeOpen ? '△' : '▽'}</span>
                   </div>
+                  {rangeNetIncomeOpen && (
+                    <ul className="report-accordion-detail-list">
+                      <li className="report-accordion-detail-item">
+                        <span className="report-accordion-detail-label">収入</span>
+                        <span className="report-accordion-detail-value amount-income">¥{formatAmount(rangeTotalIncome)}</span>
+                      </li>
+                      <li className="report-accordion-detail-item">
+                        <span className="report-accordion-detail-label">控除</span>
+                        <span className="report-accordion-detail-value amount-expense">¥{formatAmount(rangeTotalDeduction)}</span>
+                      </li>
+                    </ul>
+                  )}
                 </div>
+
+                {/* 支出合計カード（変更なし） */}
                 <div className="card report-card">
                   <div className="report-card-label">支出合計</div>
                   <div className="report-card-amount amount-expense">
                     ¥{formatAmount(rangeData.total_expense)}
                   </div>
                 </div>
-                <div className="card report-card">
-                  <div className="report-card-label">控除額</div>
-                  <div className="report-card-amount amount-expense">
-                    ¥{formatAmount(rangeData.total_deduction)}
-                  </div>
-                </div>
+
+                {/* 収支カード（変更なし） */}
                 <div className="card report-card">
                   <div className="report-card-label">収支</div>
                   <div className={`report-card-amount ${rangeData.balance >= 0 ? 'amount-income' : 'amount-expense'}`}>
                     {rangeData.balance >= 0 ? '+' : ''}¥{formatAmount(rangeData.balance)}
                   </div>
                 </div>
+
+                {/* 支出率アコーディオンカード（全体のみ、メンバー別なし） */}
+                <div
+                  className="card report-card report-accordion-card"
+                  onClick={() => setRangeExpenseRateOpen(o => !o)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setRangeExpenseRateOpen(o => !o); }}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={rangeExpenseRateOpen}
+                >
+                  <div className="report-accordion-header">
+                    <div>
+                      <div className="report-card-label">支出率</div>
+                      <div className={`report-card-amount ${rangeNetIncome > 0 ? 'amount-expense' : ''}`}>
+                        {rangeExpenseRateDisplay}
+                      </div>
+                    </div>
+                    <span className="report-accordion-toggle">{rangeExpenseRateOpen ? '△' : '▽'}</span>
+                  </div>
+                  {rangeExpenseRateOpen && (
+                    <ul className="report-accordion-detail-list">
+                      <li className="report-accordion-detail-item">
+                        <span className="report-accordion-detail-label" style={{ color: 'var(--color-text-secondary)' }}>
+                          メンバー別データなし
+                        </span>
+                      </li>
+                    </ul>
+                  )}
+                </div>
+
               </div>
 
               {/* By Category - Income */}
@@ -481,6 +630,48 @@ export default function Reports() {
         .report-card-amount {
           font-size: 20px;
           font-weight: 800;
+        }
+        .report-accordion-card {
+          cursor: pointer;
+          user-select: none;
+          text-align: left;
+        }
+        .report-accordion-card:hover {
+          opacity: 0.85;
+        }
+        .report-accordion-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+        }
+        .report-accordion-toggle {
+          font-size: 14px;
+          color: var(--color-text-secondary);
+          margin-top: 4px;
+          flex-shrink: 0;
+        }
+        .report-accordion-detail-list {
+          list-style: none;
+          margin: 10px 0 0 0;
+          padding: 0;
+          border-top: 1px solid var(--color-border);
+          padding-top: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .report-accordion-detail-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-size: 12px;
+        }
+        .report-accordion-detail-label {
+          color: var(--color-text-secondary);
+          font-weight: 500;
+        }
+        .report-accordion-detail-value {
+          font-weight: 600;
         }
         .pie-layout {
           display: flex;
