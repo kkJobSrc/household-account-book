@@ -60,6 +60,43 @@ class CategoryResponse(CategoryBase):
         from_attributes = True
 
 
+# ScheduledTransaction schemas
+class ScheduledTransactionBase(BaseModel):
+    name: str
+    type: TransactionType
+    amount: float = Field(gt=0)
+    category_id: Optional[int] = None
+    member_id: Optional[int] = None
+    day_of_month: int = Field(ge=1, le=28)
+    memo: str = ""
+    is_active: bool = True
+
+
+class ScheduledTransactionCreate(ScheduledTransactionBase):
+    pass
+
+
+class ScheduledTransactionUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[TransactionType] = None
+    amount: Optional[float] = Field(default=None, gt=0)
+    category_id: Optional[int] = None
+    member_id: Optional[int] = None
+    day_of_month: Optional[int] = Field(default=None, ge=1, le=28)
+    memo: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class ScheduledTransactionResponse(ScheduledTransactionBase):
+    id: int
+    created_at: datetime.datetime
+    member: Optional[MemberResponse] = None
+    category: Optional[CategoryResponse] = None
+
+    class Config:
+        from_attributes = True
+
+
 # Transaction schemas
 class TransactionBase(BaseModel):
     type: TransactionType
@@ -85,6 +122,7 @@ class TransactionUpdate(BaseModel):
 
 class TransactionResponse(TransactionBase):
     id: int
+    scheduled_transaction_id: Optional[int] = None
     created_at: datetime.datetime
     member: Optional[MemberResponse] = None
     category: Optional[CategoryResponse] = None
