@@ -44,6 +44,29 @@ backend/
 - 書き込み操作には必ずロギングと例外処理を追加する
 - Pydanticスキーマは `*Create`（入力用）・`*Update`（部分更新用）・`*Response`（出力用）を分ける
 
+### PUT vs PATCH の使い分け（重要）
+
+**PUT（完全置換）**: フロントエンドから全フィールドを送信する設計。実装では `model_dump()` のデフォルト（`exclude_unset=False`）を使う。
+
+```python
+# PUT: 全フィールドを更新（正しい）
+for key, value in data.model_dump().items():
+    setattr(db_obj, key, value)
+```
+
+**PATCH（部分更新）**: 送信されたフィールドだけを更新する。`exclude_unset=True` を使う。
+
+```python
+# PATCH: 送信されたフィールドのみ更新
+for key, value in data.model_dump(exclude_unset=True).items():
+    setattr(db_obj, key, value)
+```
+
+**⚠️ 落とし穴**: `PUT` エンドポイントで `*Update` スキーマの `Optional[int] = None` フィールドに対して `exclude_unset=True` を使うと、**フロントから `null` を明示的に送っても更新がスキップされる**（= NK フィールドを Null に戻せないサイレント失敗）。
+
+- FK フィールド（`category_id`, `member_id` など）を `null` に戻す操作がユーザーに必要な場合 → **PUT + `exclude_unset=False`（全フィールド送信）**
+- 送信されたフィールドのみ更新する PATCH 的動作が必要な場合 → **PATCH メソッドを使い、HTTP メソッドを明示的に分ける**
+
 ## 解説のルール
 
 コードを変更した後は、必ず以下の構成で解説する：

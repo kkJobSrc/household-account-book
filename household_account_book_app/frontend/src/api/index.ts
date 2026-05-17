@@ -1,5 +1,5 @@
 import api from './client';
-import type { Member, Category, Transaction, TransactionCreate, MonthlyReport, MonthlyTrend, RangeSummaryResponse } from '../types';
+import type { Member, Category, Transaction, TransactionCreate, MonthlyReport, MonthlyTrend, RangeSummaryResponse, ScheduledTransaction, ScheduledTransactionCreate } from '../types';
 
 // Members
 export const getMembers = () => api.get<Member[]>('/members/').then(r => r.data);
@@ -44,3 +44,23 @@ export const getRangeSummary = (params?: {
   end_year?: number;
   end_month?: number;
 }) => api.get<RangeSummaryResponse>('/reports/range', { params }).then(r => r.data);
+
+// Scheduled Transactions
+export const getScheduledTransactions = (is_active?: boolean) =>
+  api.get<ScheduledTransaction[]>('/scheduled-transactions/', {
+    params: is_active !== undefined ? { is_active } : {}
+  }).then(r => r.data);
+
+export const createScheduledTransaction = (data: ScheduledTransactionCreate) =>
+  api.post<ScheduledTransaction>('/scheduled-transactions/', data).then(r => r.data);
+
+export const updateScheduledTransaction = (
+  id: number,
+  data: Partial<ScheduledTransactionCreate>
+) => api.put<ScheduledTransaction>(`/scheduled-transactions/${id}`, data).then(r => r.data);
+
+export const deleteScheduledTransaction = (id: number) =>
+  api.delete(`/scheduled-transactions/${id}`);
+
+export const applyScheduledTransactions = () =>
+  api.post<{ applied: number; skipped: number }>('/scheduled-transactions/apply').then(r => r.data);

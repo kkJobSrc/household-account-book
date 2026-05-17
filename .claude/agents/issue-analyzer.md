@@ -122,6 +122,15 @@ issue の要件に関係するファイルを読み込む。以下を目安に�
 
 （既存エンドポイントの変更があれば記述）
 
+#### PUT vs PATCH の選択（必ず設計書に明記）
+
+| 方式 | HTTPメソッド | 実装 | 使うべき場面 |
+|---|---|---|---|
+| 完全置換 | PUT | `model_dump(exclude_unset=False)` | 全フィールドを毎回送信。FK フィールドを null に戻す操作が必要な場合 |
+| 部分更新 | PATCH | `model_dump(exclude_unset=True)` | 変更フィールドのみ送信。ただし Optional な FK フィールドを null に戻す操作には使えない |
+
+**⚠️ 注意**: `Optional[int] = None` な FK フィールド（`category_id`, `member_id` 等）を持つリソースに PATCH 的動作が必要な場合、`exclude_unset=True` では null 化がスキップされるため、PUT + 全フィールド送信を推奨する。設計書には必ずどちらを採用するかを記述すること。
+
 #### Pydanticスキーマ
 
 ```python

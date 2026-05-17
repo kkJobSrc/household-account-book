@@ -49,7 +49,17 @@ tools:
 - ネットワーク遅延で同じリクエストが2回来たとき重複データが生まれるか
 - 一意性を担保する制約があるか
 
-### 6. 集計ロジックの一貫性（reports.py）
+### 6. PUT/PATCH エンドポイントの更新方式
+
+- PUT エンドポイントで `model_dump(exclude_unset=True)` を使っている箇所を探す:
+  ```bash
+  grep -n "exclude_unset=True" household_account_book_app/backend/routers/*.py
+  ```
+- `Optional[int] = None` な FK フィールド（`category_id`, `member_id` 等）が対象リソースにある場合、`exclude_unset=True` によって **`null` への更新がサイレントにスキップされる** バグがないか確認する
+- PUT（完全置換）であれば `exclude_unset=False`（デフォルト）を使い、フロントが全フィールドを送る設計になっているか
+- 部分更新が必要なら PATCH メソッドを明示的に使い分けているか
+
+### 7. 集計ロジックの一貫性（reports.py）
 - 複数のエンドポイント（例: `/reports/monthly`, `/reports/trend`, `/reports/range`）で同じ集計（`balance` など）を行っている場合、計算方法が統一されているか
 - このアプリには `income` / `expense` / `deduction` の3つのトランザクション種別がある。`balance` の計算は `income - (expense + deduction)` が正しい。各エンドポイントで `deduction` が漏れていないか確認する
 - バリデーション（逆順期間指定など）が全エンドポイントで統一されているか

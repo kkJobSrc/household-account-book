@@ -144,7 +144,18 @@ grep -n "balance\|total_deduction\|total_expense\|total_income" household_accoun
 
    特に `reports.py` は複数の集計エンドポイントを持つ。1つを修正した場合、他のエンドポイントも同様の問題を抱えていないかチェックすること。
 
-4. 不整合があれば、該当担当者に修正を依頼する。
+4. **PUT エンドポイントの更新方式チェック**（Optional な FK フィールドを持つリソースに必須）:
+
+```bash
+# exclude_unset=True と Optional フィールドの組み合わせを検出
+grep -n "exclude_unset=True\|Optional\[int\]\|Optional\[str\]" household_account_book_app/backend/routers/*.py
+```
+
+   - `model_dump(exclude_unset=True)` を PUT エンドポイントで使うと、`null` を明示送信しても更新がスキップされるサイレント失敗が起きる
+   - FK フィールド（`category_id`, `member_id` 等）を `null` に戻す操作が必要なら、PUT は `exclude_unset=False`（デフォルト）で全フィールド送信にすること
+   - 問題があれば `backend-engineer` に修正を依頼する
+
+5. 不整合があれば、該当担当者に修正を依頼する。
 
 5. **ビルド検証**: フロントエンド・バックエンドともにエラーなくビルド・インポートできることを確認する。
 
