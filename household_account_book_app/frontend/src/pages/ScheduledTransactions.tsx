@@ -96,6 +96,14 @@ export default function ScheduledTransactions() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.amount <= 0) {
+      showToast('金額は1以上を入力してください', 'error');
+      return;
+    }
+    if (form.day_of_month < 1 || form.day_of_month > 28) {
+      showToast('引き落とし日は1〜28の間で入力してください', 'error');
+      return;
+    }
     try {
       if (editTarget) {
         await updateScheduledTransaction(editTarget.id, form);
@@ -245,9 +253,10 @@ export default function ScheduledTransactions() {
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>金額 (円) *</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]+"
                   required
-                  min={1}
                   value={form.amount || ''}
                   onChange={e => handleFormChange('amount', Number(e.target.value))}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
@@ -257,10 +266,10 @@ export default function ScheduledTransactions() {
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>引き落とし日 *</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]+"
                   required
-                  min={1}
-                  max={28}
                   value={form.day_of_month}
                   onChange={e => handleFormChange('day_of_month', Number(e.target.value))}
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
