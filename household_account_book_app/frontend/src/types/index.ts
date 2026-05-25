@@ -24,6 +24,7 @@ export interface Transaction {
   memo: string;
   member_id: number | null;
   category_id: number | null;
+  scheduled_transaction_id?: number | null;
   member: Member | null;
   category: Category | null;
   created_at: string;
@@ -36,6 +37,32 @@ export interface TransactionCreate {
   memo?: string;
   member_id?: number | null;
   category_id?: number | null;
+}
+
+export interface ScheduledTransaction {
+  id: number;
+  name: string;
+  type: TransactionType;
+  amount: number;
+  category_id: number | null;
+  member_id: number | null;
+  day_of_month: number;
+  memo: string;
+  is_active: boolean;
+  created_at: string;
+  member: Member | null;
+  category: Category | null;
+}
+
+export interface ScheduledTransactionCreate {
+  name: string;
+  type: TransactionType;
+  amount: number;
+  category_id?: number | null;
+  member_id?: number | null;
+  day_of_month: number;
+  memo?: string;
+  is_active?: boolean;
 }
 
 export interface MonthlySummary {
