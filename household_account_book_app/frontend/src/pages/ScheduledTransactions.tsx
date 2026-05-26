@@ -224,7 +224,14 @@ export default function ScheduledTransactions() {
             width: '100%', maxWidth: '480px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
           }}>
             <h2 style={{ marginTop: 0 }}>{editTarget ? '固定費を編集' : '固定費を登録'}</h2>
-            <form onSubmit={handleSubmit}>
+            <form
+              onSubmit={handleSubmit}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>予定名 *</label>
                 <input
