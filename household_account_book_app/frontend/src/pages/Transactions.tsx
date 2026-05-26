@@ -78,10 +78,15 @@ export default function Transactions() {
 
   const handleSave = async () => {
     if (!form.amount || !form.date) return;
+    const amountNum = parseFloat(form.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert('金額は1以上の数値を入力してください');
+      return;
+    }
     setSaving(true);
     const payload = {
       type: form.type,
-      amount: parseFloat(form.amount),
+      amount: amountNum,
       date: form.date,
       memo: form.memo,
       member_id: form.member_id ? parseInt(form.member_id) : null,
@@ -229,12 +234,13 @@ export default function Transactions() {
             <div className="form-group">
               <label className="form-label">金額（円）</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]+"
                 className="form-control"
                 placeholder="0"
                 value={form.amount}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                min="1"
                 autoFocus
               />
             </div>
