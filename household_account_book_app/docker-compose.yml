@@ -24,5 +24,16 @@ services:
       - backend
     restart: unless-stopped
 
+  playwright:
+    image: mcr.microsoft.com/playwright/python:v1.52.0-noble
+    container_name: kakeibo-playwright
+    network_mode: host
+    volumes:
+      - ../:/workspace:ro
+    working_dir: /workspace
+    profiles:
+      - test
+    command: sleep infinity
+
 volumes:
   db-data:
