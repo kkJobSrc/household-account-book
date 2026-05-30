@@ -246,6 +246,11 @@
   font-weight: 700;
 }
 
+.amount-deduction {
+  color: #d97706;
+  font-weight: 700;
+}
+
 /* ===== FORM ===== */
 .form-group {
   margin-bottom: 16px;
