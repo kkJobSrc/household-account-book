@@ -25,22 +25,43 @@ tools:
 
 タスクが「〜が動かない」「〜が反映されない」「〜でエラーが出る」などのバグ修正の場合、コードを読む前に **まずアプリを起動して実際のエラーを確認する**。
 
-```bash
-# アプリ起動（未起動の場合）
-cd /home/kobayashi/household-account-book/household_account_book_app
-docker compose up -d
+`.claude/skills/app-startup/SKILL.md` を読んで手順に従い実行する。HTTPステータスコード・エラーメッセージを先に把握することで、コード調査の方向を絞る。
 
-# 実際にAPIを叩いてエラーを確認する例
-curl -s -X PUT "http://localhost:8000/transactions/1" \
-  -H "Content-Type: application/json" \
-  -d '{"type":"expense","amount":1000,"date":"2026-05-09","memo":"test"}' \
-  | python3 -m json.tool
+---
 
-# エラーログの確認
-docker logs kakeibo-backend --tail 30
+### Phase 0.5: 実装前確認ゲート（Phase 1 の直後に必ず実施）
+
+Phase 1 の分析で以下のいずれかに該当した場合は実装を止め、ユーザーに確認する。
+全件が明確でリスクがゼロの場合のみ省略してよい。
+
+**確認が必要な状況**
+
+| 種別 | 具体例 |
+|---|---|
+| 要件の不明点 | 要件から複数の実装方針が考えられる / `issue-planner` なしで直接起動され要件が曖昧 / APIの後方互換性が崩れる |
+| 🔒 セキュリティ | 認証・認可・外部入力処理に関わる新規設計が発生する |
+| 📐 拡張性 | 既存のスキーマ・APIコントラクト・コンポーネント構造を変更する |
+| 💾 データ | DBモデルや既存データへの非互換変更がある |
+| ⚡ パフォーマンス | N+1クエリの可能性や同期ブロッキングが生じる実装になる |
+
+**確認フォーマット**:
+
+```
+## 実装前確認
+
+以下の点を確認してから実装を開始します。
+
+### 要件の不明点
+1. [不明点と選択肢]
+
+### 技術リスク
+🔒 セキュリティ: [リスク内容と推奨方針（なければ「なし」）]
+📐 拡張性: [影響範囲と代替案（なければ「なし」）]
+💾 データ: [変更内容とマイグレーション要否（なければ「なし」）]
+⚡ パフォーマンス: [懸念箇所（なければ「なし」）]
 ```
 
-**目的**: HTTPステータスコード・エラーメッセージを先に把握することで、コード調査の方向を絞る。推測で全ファイルを読む前に、実際に何が起きているかを確認する。
+ユーザーの回答を受けてから Phase 2 へ進む。
 
 ---
 
@@ -123,31 +144,7 @@ docker logs kakeibo-backend --tail 30
 
 両者が完了したら、以下を確認する：
 
-1. **型の整合性**: `backend/schemas.py` のフィールド名・型が `frontend/src/types/index.ts` と一致しているか
-
-```bash
-# バックエンドのスキーマを確認
-grep -n "class.*Response\|class.*Create" household_account_book_app/backend/schemas.py
-
-# フロントエンドの型を確認
-cat household_account_book_app/frontend/src/types/index.ts
-```
-
-2. **エンドポイントの整合性**: `api/index.ts` のURLが実際のルーターと一致しているか
-
-3. 不整合があれば、該当担当者に修正を依頼する。
-
-4. **ビルド検証**: フロントエンド・バックエンドともにエラーなくビルド・インポートできることを確認する。
-
-```bash
-# フロントエンド TypeScript 型チェック
-cd /home/kobayashi/household-account-book/household_account_book_app/frontend && npm run build 2>&1 | tail -20
-
-# バックエンド インポート検証
-cd /home/kobayashi/household-account-book/household_account_book_app/backend && python -c "import schemas; import models; print('OK')"
-```
-
-ビルドエラーがあれば、該当担当者に修正を依頼してからコミットする。
+`.claude/skills/build-validation/SKILL.md` を読んで手順に従い確認する。ビルドエラーや型の不整合があれば、該当担当者に修正を依頼してからコミットする。
 
 ---
 
