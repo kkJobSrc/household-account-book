@@ -386,9 +386,6 @@ export default function Transactions() {
         .tx-item-amount {
           font-size: 16px;
         }
-        .amount-deduction {
-          color: #d97706;
-        }
         .tx-item-actions {
           display: flex;
           gap: 2px;

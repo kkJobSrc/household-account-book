@@ -86,7 +86,7 @@ export default function Dashboard() {
               </li>
               <li className="accordion-detail-item">
                 <span className="accordion-detail-label">控除</span>
-                <span className="accordion-detail-value amount-expense">¥{formatAmount(totalDeduction)}</span>
+                <span className="accordion-detail-value amount-deduction">¥{formatAmount(totalDeduction)}</span>
               </li>
             </ul>
           )}
