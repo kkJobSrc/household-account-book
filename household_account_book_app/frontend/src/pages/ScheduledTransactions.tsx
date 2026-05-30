@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   getScheduledTransactions,
   createScheduledTransaction,
@@ -37,6 +37,8 @@ export default function ScheduledTransactions() {
   const [form, setForm] = useState<ScheduledTransactionCreate>(EMPTY_FORM);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [applying, setApplying] = useState(false);
+  const [openSwipeId, setOpenSwipeId] = useState<number | null>(null);
+  const touchStartX = useRef<number>(0);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -101,7 +103,7 @@ export default function ScheduledTransactions() {
       return;
     }
     if (form.day_of_month < 1 || form.day_of_month > 28) {
-      showToast('引き落とし日は1〜28の間で入力してください', 'error');
+      showToast('登録日は1〜28の間で入力してください', 'error');
       return;
     }
     try {
@@ -194,7 +196,7 @@ export default function ScheduledTransactions() {
               opacity: applying ? 0.7 : 1,
             }}
           >
-            {applying ? '処理中...' : '今月分を一括入力'}
+            {applying ? '処理中...' : '一括登録'}
           </button>
           <button
             onClick={handleOpenCreate}
@@ -208,7 +210,7 @@ export default function ScheduledTransactions() {
               fontWeight: 'bold',
             }}
           >
-            + 新規登録
+            + 新規作成
           </button>
         </div>
       </div>
@@ -271,7 +273,7 @@ export default function ScheduledTransactions() {
               </div>
 
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>引き落とし日 *</label>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>登録日 *</label>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -368,95 +370,105 @@ export default function ScheduledTransactions() {
           固定費が登録されていません。「+ 新規登録」から追加してください。
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #e0e0e0' }}>
-                <th style={{ padding: '0.75rem', textAlign: 'left' }}>予定名</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left' }}>種別</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right' }}>金額</th>
-                <th style={{ padding: '0.75rem', textAlign: 'center' }}>日付</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left' }}>カテゴリ</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left' }}>メンバー</th>
-                <th style={{ padding: '0.75rem', textAlign: 'center' }}>状態</th>
-                <th style={{ padding: '0.75rem', textAlign: 'center' }}>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {schedules.map(st => (
-                <tr
-                  key={st.id}
+        <div style={{ borderTop: '1px solid #e0e0e0' }}>
+          {schedules.map(st => (
+            <div
+              key={st.id}
+              style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid #e0e0e0' }}
+            >
+              {/* Swipeable content */}
+              <div
+                style={{
+                  transform: openSwipeId === st.id ? 'translateX(-80px)' : 'translateX(0)',
+                  transition: 'transform 200ms ease',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: st.is_active ? '#fff' : '#fafafa',
+                  opacity: st.is_active ? 1 : 0.5,
+                  userSelect: 'none',
+                }}
+                onTouchStart={(e: React.TouchEvent) => {
+                  touchStartX.current = e.touches[0].clientX;
+                }}
+                onTouchEnd={(e: React.TouchEvent) => {
+                  const delta = e.changedTouches[0].clientX - touchStartX.current;
+                  if (delta < -50) {
+                    setOpenSwipeId(st.id);
+                  } else if (delta > 20) {
+                    setOpenSwipeId(null);
+                  }
+                }}
+                onClick={() => {
+                  if (openSwipeId === st.id) setOpenSwipeId(null);
+                }}
+              >
+                {/* Row 1: type badge / category / name / member */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'nowrap' }}>
+                  <span style={{
+                    flexShrink: 0,
+                    display: 'inline-block', padding: '0.15rem 0.45rem',
+                    borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold',
+                    backgroundColor: st.type === 'income' ? '#e8f5e9' : st.type === 'expense' ? '#fce4ec' : '#fff3e0',
+                    color: st.type === 'income' ? '#2e7d32' : st.type === 'expense' ? '#c62828' : '#e65100',
+                  }}>
+                    {TYPE_LABELS[st.type]}
+                  </span>
+                  <span style={{
+                    flexGrow: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    fontSize: '0.9rem',
+                  }}>
+                    {st.category?.name ? `${st.category.name} / ` : ''}{st.name}
+                  </span>
+                  {!st.is_active && (
+                    <span style={{
+                      flexShrink: 0, fontSize: '0.7rem', padding: '0.1rem 0.35rem',
+                      borderRadius: '4px', backgroundColor: '#f5f5f5', color: '#757575',
+                    }}>
+                      無効
+                    </span>
+                  )}
+                  {st.member ? (
+                    <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}>
+                      <span style={{
+                        display: 'inline-block', width: '9px', height: '9px',
+                        borderRadius: '50%', backgroundColor: st.member.color,
+                      }} />
+                      {st.member.name}
+                    </span>
+                  ) : null}
+                </div>
+                {/* Row 2: amount / day */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#444' }}>
+                  <span style={{ fontWeight: 'bold' }}>金額: ¥{st.amount.toLocaleString()}</span>
+                  <span>登録日: {st.day_of_month}日</span>
+                </div>
+              </div>
+
+              {/* Action buttons revealed on swipe-left */}
+              <div style={{
+                position: 'absolute', top: 0, right: 0, width: '80px', height: '100%',
+                display: 'flex',
+              }}>
+                <button
+                  onClick={() => { setOpenSwipeId(null); handleOpenEdit(st); }}
                   style={{
-                    borderBottom: '1px solid #e0e0e0',
-                    opacity: st.is_active ? 1 : 0.5,
-                    backgroundColor: st.is_active ? '#fff' : '#fafafa',
+                    flex: 1, border: 'none', backgroundColor: '#1976d2',
+                    color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
                   }}
                 >
-                  <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>{st.name}</td>
-                  <td style={{ padding: '0.75rem' }}>
-                    <span style={{
-                      display: 'inline-block', padding: '0.2rem 0.5rem',
-                      borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold',
-                      backgroundColor: st.type === 'income' ? '#e8f5e9' : st.type === 'expense' ? '#fce4ec' : '#fff3e0',
-                      color: st.type === 'income' ? '#2e7d32' : st.type === 'expense' ? '#c62828' : '#e65100',
-                    }}>
-                      {TYPE_LABELS[st.type]}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 'bold' }}>
-                    ¥{st.amount.toLocaleString()}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>毎月{st.day_of_month}日</td>
-                  <td style={{ padding: '0.75rem' }}>{st.category?.name ?? '—'}</td>
-                  <td style={{ padding: '0.75rem' }}>
-                    {st.member ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <span style={{
-                          display: 'inline-block', width: '10px', height: '10px',
-                          borderRadius: '50%', backgroundColor: st.member.color,
-                        }} />
-                        {st.member.name}
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                    <span style={{
-                      display: 'inline-block', padding: '0.2rem 0.5rem',
-                      borderRadius: '4px', fontSize: '0.8rem',
-                      backgroundColor: st.is_active ? '#e8f5e9' : '#f5f5f5',
-                      color: st.is_active ? '#2e7d32' : '#757575',
-                    }}>
-                      {st.is_active ? '有効' : '無効'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                      <button
-                        onClick={() => handleOpenEdit(st)}
-                        style={{
-                          padding: '0.25rem 0.75rem', borderRadius: '4px',
-                          border: '1px solid #1976d2', color: '#1976d2',
-                          backgroundColor: '#fff', cursor: 'pointer', fontSize: '0.85rem',
-                        }}
-                      >
-                        編集
-                      </button>
-                      <button
-                        onClick={() => handleDelete(st.id, st.name)}
-                        style={{
-                          padding: '0.25rem 0.75rem', borderRadius: '4px',
-                          border: '1px solid #f44336', color: '#f44336',
-                          backgroundColor: '#fff', cursor: 'pointer', fontSize: '0.85rem',
-                        }}
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  編集
+                </button>
+                <button
+                  onClick={() => { setOpenSwipeId(null); handleDelete(st.id, st.name); }}
+                  style={{
+                    flex: 1, border: 'none', backgroundColor: '#f44336',
+                    color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
+                  }}
+                >
+                  削除
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
