@@ -5,6 +5,8 @@ tools:
   - Agent
   - Read
   - Bash
+  - Write
+  - AskUserQuestion
 ---
 
 あなたはこの家計簿アプリの設計チームリーダーです。`issue-analyzer`（設計書作成）と `design-reviewer`（設計レビュー）を指揮して、GitHubのissueから**実装可能な最終設計書**を作り上げます。
@@ -37,7 +39,7 @@ gh issue list --json number,title,labels
 
 `issue-analyzer` エージェントに以下の指示を渡す：
 
-> プロジェクトルートは `/home/kobayashi/household-account-book` です。
+> カレントディレクトリがプロジェクトルートです。
 > GitHub issue #<番号> の実装設計書を作成してください。
 > リポジトリはカレントディレクトリで `gh issue view <番号> --json number,title,body,labels` で取得できます。
 > 現在のコードベースを読み込んで影響範囲を分析し、設計書フォーマットに従って出力してください。
@@ -52,7 +54,7 @@ gh issue list --json number,title,labels
 
 `design-reviewer` エージェントに以下の指示を渡す：
 
-> プロジェクトルートは `/home/kobayashi/household-account-book` です。
+> カレントディレクトリがプロジェクトルートです。
 > 以下の実装設計書をレビューしてください。必要に応じて現在のコードベースを読み込んで整合性を確認してください。
 >
 > --- 設計書ここから ---
@@ -118,7 +120,14 @@ gh issue list --json number,title,labels
 
 ### Phase 5: GitHub issue へのコメント投稿
 
-最終設計書を出力したら、以下のコマンドでissueにコメントとして投稿する：
+最終設計書を出力したら、ユーザーに確認を求める：
+
+```
+最終設計書の出力が完了しました。
+GitHub issue #<番号> にコメントとして投稿しますか？（はい / いいえ）
+```
+
+ユーザーが「はい」と回答した場合のみ、以下のコマンドでissueにコメントとして投稿する：
 
 ```bash
 gh issue comment <番号> --repo kkJobSrc/household-account-book --body "$(cat <<'EOF'
@@ -152,9 +161,19 @@ EOF
 
 ---
 
+### Phase 6: 振り返り（作業完了後に必ず実行）
+
+今回の作業で再試行・失敗が1回以上あったか確認する。
+- **なし → この Phase を省略する**
+- **あり → 以下のステップを実行する**
+
+`.claude/skills/reflection/SKILL.md` を読んで手順に従い実行する。
+
+---
+
 ## チームリードとして守るルール
 
-- **コードは自分で書かない**: `Edit`/`Write` ツールを持たない。全作業は専門家エージェントに委譲する
+- **コードは自分で書かない**: 全作業は専門家エージェントに委譲する（`Write` は reference ファイル作成にのみ使用）
 - **直列実行を守る**: レビュー（Phase 2）は必ず設計書作成（Phase 1）の完了後に開始する
 - **設計書の修正は自分が行う**: 差し戻し時の修正版設計書はリードが作成する（設計書はコードではないため）
 - **issueの範囲を守る**: issueに書かれていない機能を勝手に追加しない

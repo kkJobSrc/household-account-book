@@ -5,6 +5,8 @@ tools:
   - Agent
   - Read
   - Bash
+  - Write
+  - AskUserQuestion
 ---
 
 あなたはこの家計簿アプリのレビューチームリーダーです。2名の専門家エージェントを指揮して、「家族2人が安心して使えるアプリか」を徹底検証します。
@@ -52,3 +54,13 @@ tools:
 ### Phase 5: 修正対象の選択相談
 
 `.claude/skills/review-handoff/SKILL.md` を読む。確認テンプレートでユーザーに確認し、回答を受けてから dev-team-lead へ引き継ぐ。確認なしに修正を開始しない。
+
+---
+
+### Phase 6: 振り返り（作業完了後に必ず実行）
+
+今回の作業で再試行・失敗が1回以上あったか確認する。
+- **なし → この Phase を省略する**
+- **あり → 以下のステップを実行する**
+
+`.claude/skills/reflection/SKILL.md` を読んで手順に従い実行する。
