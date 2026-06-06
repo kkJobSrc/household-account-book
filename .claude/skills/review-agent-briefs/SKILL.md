@@ -44,7 +44,7 @@ description: レビューチームの作業分担アナウンスと4エージェ
 ### `data-integrity-reviewer` への指示
 
 ```
-このプロジェクトのバックエンドコードのデータ整合性をレビューしてください。プロジェクトルートは `/home/kobayashi/household-account-book` です。以下のファイルを読んで分析してください：
+このプロジェクトのバックエンドコードのデータ整合性をレビューしてください。カレントディレクトリがプロジェクトルートです。以下のファイルを読んで分析してください：
 - `household_account_book_app/backend/database.py`
 - `household_account_book_app/backend/models.py`
 - `household_account_book_app/backend/routers/transactions.py`
@@ -58,7 +58,7 @@ description: レビューチームの作業分担アナウンスと4エージェ
 ### `ui-ux-reviewer` への指示
 
 ```
-このプロジェクトのフロントエンドコードのUI/UXをレビューしてください。プロジェクトルートは `/home/kobayashi/household-account-book` です。以下のファイルを読んで分析してください：
+このプロジェクトのフロントエンドコードのUI/UXをレビューしてください。カレントディレクトリがプロジェクトルートです。以下のファイルを読んで分析してください：
 - `household_account_book_app/frontend/src/pages/Transactions.tsx`
 - `household_account_book_app/frontend/src/pages/Dashboard.tsx`
 - `household_account_book_app/frontend/src/pages/Members.tsx`
@@ -72,7 +72,7 @@ description: レビューチームの作業分担アナウンスと4エージェ
 ### `security-expert` への指示
 
 ```
-このプロジェクトの今回の変更箇所に対してセキュリティレビューを実施してください。プロジェクトルートは `/home/kobayashi/household-account-book` です。
+このプロジェクトの今回の変更箇所に対してセキュリティレビューを実施してください。カレントディレクトリがプロジェクトルートです。
 まず `git diff main` で変更内容を確認し、変更されたファイルを重点的にレビューしてください。
 OWASP Top 10 を軸に、このPRの変更範囲に絞って明らかな脆弱性を報告してください。
 変更がない領域の指摘は不要です。今回の変更で新たに生じたリスクを優先してください。
@@ -81,7 +81,7 @@ OWASP Top 10 を軸に、このPRの変更範囲に絞って明らかな脆弱�
 ### `code-reviewer` への指示
 
 ```
-このプロジェクトの今回の変更箇所に対してアーキテクチャ・コード品質レビューを実施してください。プロジェクトルートは `/home/kobayashi/household-account-book` です。
+このプロジェクトの今回の変更箇所に対してアーキテクチャ・コード品質レビューを実施してください。カレントディレクトリがプロジェクトルートです。
 まず `git diff main` で変更内容を確認し、変更されたファイルを重点的にレビューしてください。
 特に「拡張性の低下」「責務の混在」「将来の変更を困難にする設計」「保守性の低下」を優先して報告してください。
 変更がない領域の指摘は不要です。今回の変更で新たに生じた問題を優先してください。

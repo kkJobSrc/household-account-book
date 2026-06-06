@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import asc, desc
 from typing import List, Optional
 from datetime import date
 from database import get_db
@@ -9,14 +10,30 @@ from logger import db_logger, error_logger
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
+# Sortable column mapping
+SORT_COLUMN_MAP = {
+    "date": models.Transaction.date,
+    "amount": models.Transaction.amount,
+    "created_at": models.Transaction.created_at,
+}
+
 
 @router.get("/", response_model=List[schemas.TransactionResponse])
 def get_transactions(
     year: Optional[int] = None,
     month: Optional[int] = None,
-    type: Optional[str] = None,
-    member_id: Optional[int] = None,
-    category_id: Optional[int] = None,
+    # Multi-value type filter (OR join): ?type=income&type=expense
+    types: List[str] = Query(default=[], alias="type"),
+    # Multi-value member filter (OR join): ?member_id=1&member_id=2
+    member_ids: List[int] = Query(default=[], alias="member_id"),
+    # Multi-value category filter (OR join): ?category_id=1&category_id=2
+    category_ids: List[int] = Query(default=[], alias="category_id"),
+    # Date range filter
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    # Sort parameters: sort_by accepts 'date' | 'amount' | 'created_at'
+    sort_by: str = Query(default="date"),
+    sort_order: str = Query(default="desc"),
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db)
@@ -25,19 +42,39 @@ def get_transactions(
         joinedload(models.Transaction.member),
         joinedload(models.Transaction.category)
     )
+
+    # Year/month filters
     if year:
         from sqlalchemy import extract
         query = query.filter(extract('year', models.Transaction.date) == year)
     if month:
         from sqlalchemy import extract
         query = query.filter(extract('month', models.Transaction.date) == month)
-    if type:
-        query = query.filter(models.Transaction.type == type)
-    if member_id:
-        query = query.filter(models.Transaction.member_id == member_id)
-    if category_id:
-        query = query.filter(models.Transaction.category_id == category_id)
-    return query.order_by(models.Transaction.date.desc(), models.Transaction.id.desc()).offset(skip).limit(limit).all()
+
+    # OR filter for transaction types
+    if types:
+        query = query.filter(models.Transaction.type.in_(types))
+
+    # OR filter for member IDs
+    if member_ids:
+        query = query.filter(models.Transaction.member_id.in_(member_ids))
+
+    # OR filter for category IDs
+    if category_ids:
+        query = query.filter(models.Transaction.category_id.in_(category_ids))
+
+    # Date range filters
+    if date_from:
+        query = query.filter(models.Transaction.date >= date_from)
+    if date_to:
+        query = query.filter(models.Transaction.date <= date_to)
+
+    # Resolve sort column; fall back to 'date' for unknown values
+    sort_col = SORT_COLUMN_MAP.get(sort_by, models.Transaction.date)
+    order_fn = asc if sort_order == "asc" else desc
+    query = query.order_by(order_fn(sort_col), desc(models.Transaction.id))
+
+    return query.offset(skip).limit(limit).all()
 
 
 @router.post("/", response_model=schemas.TransactionResponse)

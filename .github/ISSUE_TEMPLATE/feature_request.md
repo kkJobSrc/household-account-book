@@ -1,20 +1,23 @@
 ---
-name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
-assignees: ''
-
+name: Feature Request
+about: 新機能追加または既存機能の改善提案
+labels: enhancement
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## 概要
+<!-- 何をしたいか一行で -->
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+## 背景・モチベーション
+<!-- なぜこの機能が必要か。どんな課題を解決するか -->
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+## 提案する解決策
+<!-- 具体的にどう実装・変更するか -->
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+## 代替案
+<!-- 他に検討したアプローチがあれば -->
+
+## 完了条件（Acceptance Criteria）
+- [ ] 
+- [ ] 
+
+## 補足・参考リンク

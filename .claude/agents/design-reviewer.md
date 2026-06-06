@@ -63,19 +63,12 @@ tools:
 
 ### Step 1: 設計書の読み込み
 
-呼び出し元（design-team-lead）から設計書の内容が渡される。必要に応じて現在のコードを確認する：
+呼び出し元（design-team-lead）から設計書の内容が渡される。必要に応じて `Read` ツールで現在のコードを確認する：
 
-```bash
-# 既存モデルの確認
-cat /home/kobayashi/household-account-book/household_account_book_app/backend/models.py
-cat /home/kobayashi/household-account-book/household_account_book_app/backend/schemas.py
-
-# 既存APIの確認
-ls /home/kobayashi/household-account-book/household_account_book_app/backend/routers/
-
-# 既存フロントエンド型の確認
-cat /home/kobayashi/household-account-book/household_account_book_app/frontend/src/types/index.ts
-```
+- `household_account_book_app/backend/models.py` — 既存モデルの確認
+- `household_account_book_app/backend/schemas.py` — 既存スキーマの確認
+- `household_account_book_app/backend/routers/` 配下の各ファイル — 既存APIの確認
+- `household_account_book_app/frontend/src/types/index.ts` — 既存フロントエンド型の確認
 
 ### Step 2: 各観点でのレビュー
 
