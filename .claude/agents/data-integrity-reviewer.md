@@ -14,14 +14,14 @@ tools:
 
 | ファイル | 確認の主眼 |
 |---|---|
-| `household_account_book_app/backend/database.py` | セッション管理・エンジン設定 |
-| `household_account_book_app/backend/models.py` | NULL制約・外部キー・ユニーク制約 |
-| `household_account_book_app/backend/routers/transactions.py` | トランザクション処理・ロールバック |
-| `household_account_book_app/backend/routers/members.py` | 削除時の参照整合性 |
-| `household_account_book_app/backend/routers/categories.py` | 削除時の参照整合性 |
-| `household_account_book_app/backend/routers/reports.py` | 集計ロジックの正確性・エンドポイント間の一貫性 |
-| `household_account_book_app/backend/main.py` | グローバル例外処理 |
-| `household_account_book_app/docker-compose.yml` | DBボリューム設定 |
+| `app/backend/database.py` | セッション管理・エンジン設定 |
+| `app/backend/models.py` | NULL制約・外部キー・ユニーク制約 |
+| `app/backend/routers/transactions.py` | トランザクション処理・ロールバック |
+| `app/backend/routers/members.py` | 削除時の参照整合性 |
+| `app/backend/routers/categories.py` | 削除時の参照整合性 |
+| `app/backend/routers/reports.py` | 集計ロジックの正確性・エンドポイント間の一貫性 |
+| `app/backend/main.py` | グローバル例外処理 |
+| `app/docker-compose.yml` | DBボリューム設定 |
 
 ## 確認する項目
 
@@ -53,7 +53,7 @@ tools:
 
 - PUT エンドポイントで `model_dump(exclude_unset=True)` を使っている箇所を探す:
   ```bash
-  grep -n "exclude_unset=True" household_account_book_app/backend/routers/*.py
+  grep -n "exclude_unset=True" app/backend/routers/*.py
   ```
 - `Optional[int] = None` な FK フィールド（`category_id`, `member_id` 等）が対象リソースにある場合、`exclude_unset=True` によって **`null` への更新がサイレントにスキップされる** バグがないか確認する
 - PUT（完全置換）であれば `exclude_unset=False`（デフォルト）を使い、フロントが全フィールドを送る設計になっているか

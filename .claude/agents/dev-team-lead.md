@@ -187,7 +187,7 @@ Phase 1 の分析で以下のいずれかに該当した場合は実装を止め
 ### 動作確認方法
 
 ```bash
-cd household_account_book_app && docker compose up -d --build
+docker compose up -d --build
 ```
 
 確認手順:

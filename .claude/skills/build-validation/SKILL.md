@@ -14,7 +14,7 @@ description: 実装完了後にフロントエンド(TypeScript)とバックエ�
 ```bash
 # バックエンドの Response / Create スキーマを列挙
 grep -n "class.*Response\|class.*Create\|class.*Update" \
-  household_account_book_app/backend/schemas.py
+  app/backend/schemas.py
 ```
 
 次に `frontend/src/types/index.ts` を読み、フィールド名・型がスキーマと一致するかを確認する。不一致があれば Step 3 を実行する前にフロントエンド担当へ修正を依頼する。
@@ -26,11 +26,11 @@ grep -n "class.*Response\|class.*Create\|class.*Update" \
 ```bash
 # バックエンドのルーター prefix を列挙
 grep -n 'prefix=' \
-  household_account_book_app/backend/routers/*.py
+  app/backend/routers/*.py
 
 # フロントエンドのAPI呼び出しURLを確認
 grep -n 'api\.' \
-  household_account_book_app/frontend/src/api/index.ts
+  app/frontend/src/api/index.ts
 ```
 
 ## Step 3: TypeScript コンパイルエラー確認
@@ -38,7 +38,7 @@ grep -n 'api\.' \
 型の不整合は実行時ではなくビルド時に検出できる:
 
 ```bash
-cd household_account_book_app/frontend && npm run build 2>&1 | tail -20
+cd app/frontend && npm run build 2>&1 | tail -20
 ```
 
 エラーがなければ `Successfully compiled` または `✓ built in` が表示される。エラーがあればエラーメッセージのファイル名・行番号を frontend-educator に伝えて修正を依頼する。
@@ -48,7 +48,7 @@ cd household_account_book_app/frontend && npm run build 2>&1 | tail -20
 スキーマ・モデルのインポートが通ることを確認する:
 
 ```bash
-cd household_account_book_app/backend && python -c "import schemas; import models; print('OK')"
+cd app/backend && python -c "import schemas; import models; print('OK')"
 ```
 
 `OK` が表示されれば問題なし。`ModuleNotFoundError` や `ImportError` があればエラーメッセージを backend-engineer に伝えて修正を依頼する。

@@ -22,7 +22,6 @@ docker ps --filter "name=kakeibo-playwright" --filter "status=running" --format 
 ### 1. playwright コンテナを起動する
 
 ```bash
-cd household_account_book_app
 docker compose --profile test up -d playwright
 ```
 

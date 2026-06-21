@@ -65,10 +65,10 @@ tools:
 
 呼び出し元（design-team-lead）から設計書の内容が渡される。必要に応じて `Read` ツールで現在のコードを確認する：
 
-- `household_account_book_app/backend/models.py` — 既存モデルの確認
-- `household_account_book_app/backend/schemas.py` — 既存スキーマの確認
-- `household_account_book_app/backend/routers/` 配下の各ファイル — 既存APIの確認
-- `household_account_book_app/frontend/src/types/index.ts` — 既存フロントエンド型の確認
+- `app/backend/models.py` — 既存モデルの確認
+- `app/backend/schemas.py` — 既存スキーマの確認
+- `app/backend/routers/` 配下の各ファイル — 既存APIの確認
+- `app/frontend/src/types/index.ts` — 既存フロントエンド型の確認
 
 ### Step 2: 各観点でのレビュー
 

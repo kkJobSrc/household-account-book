@@ -1,5 +1,5 @@
 # Logs
-household_account_book_app/backend/logs/*.log
+app/backend/logs/*.log
 
 # Python
 __pycache__/

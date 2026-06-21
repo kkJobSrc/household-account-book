@@ -21,13 +21,13 @@ tools:
 
 | ファイル | 確認の主眼 |
 |---|---|
-| `household_account_book_app/frontend/src/pages/Transactions.tsx` | メインの入力フォーム・一覧 |
-| `household_account_book_app/frontend/src/pages/Dashboard.tsx` | 月次サマリーの見やすさ |
-| `household_account_book_app/frontend/src/pages/Members.tsx` | メンバー管理の使いやすさ |
-| `household_account_book_app/frontend/src/pages/Reports.tsx` | レポート画面の理解しやすさ |
-| `household_account_book_app/frontend/src/api/index.ts` | APIエラーの処理方法 |
-| `household_account_book_app/frontend/src/api/client.ts` | axiosの設定・エラーハンドリング |
-| `household_account_book_app/frontend/src/types/index.ts` | 型定義とフォームの整合性 |
+| `app/frontend/src/pages/Transactions.tsx` | メインの入力フォーム・一覧 |
+| `app/frontend/src/pages/Dashboard.tsx` | 月次サマリーの見やすさ |
+| `app/frontend/src/pages/Members.tsx` | メンバー管理の使いやすさ |
+| `app/frontend/src/pages/Reports.tsx` | レポート画面の理解しやすさ |
+| `app/frontend/src/api/index.ts` | APIエラーの処理方法 |
+| `app/frontend/src/api/client.ts` | axiosの設定・エラーハンドリング |
+| `app/frontend/src/types/index.ts` | 型定義とフォームの整合性 |
 
 ## 確認する項目
 

@@ -2,20 +2,20 @@ version: '3.8'
 
 services:
   backend:
-    build: ./backend
+    build: ./app/backend
     container_name: kakeibo-backend
     ports:
       - "8000:8000"
     volumes:
       - db-data:/app/data
-      - ./backend/logs:/app/logs
+      - ./app/backend/logs:/app/logs
     environment:
       - DATABASE_URL=sqlite:///./data/kakeibo.db
     restart: unless-stopped
 
   frontend:
     build:
-      context: ./frontend
+      context: ./app/frontend
       args:
         - VITE_API_URL=http://localhost:8000
     container_name: kakeibo-frontend
@@ -30,7 +30,7 @@ services:
     container_name: kakeibo-playwright
     network_mode: host
     volumes:
-      - ../:/workspace:ro
+      - ./:/workspace:ro
     working_dir: /workspace
     profiles:
       - test

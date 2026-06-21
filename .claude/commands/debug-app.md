@@ -26,13 +26,13 @@ docker exec kakeibo-backend ls /app/
 docker exec kakeibo-backend ls /app/logger.py
 
 # イメージのビルド履歴で RUN コマンドを確認
-docker image history household_account_book_app-backend --no-trunc | grep -i "mkdir\|COPY"
+docker image history app-backend --no-trunc | grep -i "mkdir\|COPY"
 ```
 
 **コードが反映されていない場合は必ず `--build` で再起動する:**
 
 ```bash
-cd household_account_book_app && docker compose up -d --build
+docker compose up -d --build
 ```
 
 ## Step 3: ログ出力の確認
