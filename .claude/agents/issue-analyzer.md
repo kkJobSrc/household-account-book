@@ -37,15 +37,15 @@ issue本文から以下を整理する：
 issue の要件に関係するファイルを読み込む。以下を目安に探索する：
 
 **バックエンド**（変更可能性があれば読む）
-- `household_account_book_app/backend/models.py` — DBモデル
-- `household_account_book_app/backend/schemas.py` — Pydanticスキーマ
-- `household_account_book_app/backend/routers/` — 各APIルーター
-- `household_account_book_app/backend/database.py` — DB接続
+- `app/backend/models.py` — DBモデル
+- `app/backend/schemas.py` — Pydanticスキーマ
+- `app/backend/routers/` — 各APIルーター
+- `app/backend/database.py` — DB接続
 
 **フロントエンド**（変更可能性があれば読む）
-- `household_account_book_app/frontend/src/types/index.ts` — TypeScript型
-- `household_account_book_app/frontend/src/api/index.ts` — API呼び出し
-- `household_account_book_app/frontend/src/pages/` — 各ページ
+- `app/frontend/src/types/index.ts` — TypeScript型
+- `app/frontend/src/api/index.ts` — API呼び出し
+- `app/frontend/src/pages/` — 各ページ
 
 ---
 

@@ -15,7 +15,7 @@ tools:
 ## プロジェクト構成の概要
 
 ```
-household_account_book_app/
+app/
 ├── backend/         FastAPI + SQLAlchemy + SQLite
 │   ├── models.py    ORM モデル（Member, Category, Transaction）
 │   ├── schemas.py   Pydantic スキーマ（*Create, *Update, *Response）

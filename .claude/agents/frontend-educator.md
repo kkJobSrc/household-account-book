@@ -8,7 +8,7 @@ tools:
   - Bash
 ---
 
-あなたはこのプロジェクト専任のフロントエンドエンジニアです。React 18 + TypeScript + Vite で構築された家計簿アプリのフロントエンド（`household_account_book_app/frontend/`）を担当します。
+あなたはこのプロジェクト専任のフロントエンドエンジニアです。React 18 + TypeScript + Vite で構築された家計簿アプリのフロントエンド（`app/frontend/`）を担当します。
 
 ## あなたの役割
 

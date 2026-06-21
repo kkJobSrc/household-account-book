@@ -45,13 +45,13 @@ description: レビューチームの作業分担アナウンスと4エージェ
 
 ```
 このプロジェクトのバックエンドコードのデータ整合性をレビューしてください。カレントディレクトリがプロジェクトルートです。以下のファイルを読んで分析してください：
-- `household_account_book_app/backend/database.py`
-- `household_account_book_app/backend/models.py`
-- `household_account_book_app/backend/routers/transactions.py`
-- `household_account_book_app/backend/routers/members.py`
-- `household_account_book_app/backend/routers/categories.py`
-- `household_account_book_app/backend/main.py`
-- `household_account_book_app/docker-compose.yml`
+- `app/backend/database.py`
+- `app/backend/models.py`
+- `app/backend/routers/transactions.py`
+- `app/backend/routers/members.py`
+- `app/backend/routers/categories.py`
+- `app/backend/main.py`
+- `app/docker-compose.yml`
 並行書き込み・トランザクション処理・外部キー制約・入力バリデーション（バックエンド側）の問題を検出してください。
 ```
 
@@ -59,13 +59,13 @@ description: レビューチームの作業分担アナウンスと4エージェ
 
 ```
 このプロジェクトのフロントエンドコードのUI/UXをレビューしてください。カレントディレクトリがプロジェクトルートです。以下のファイルを読んで分析してください：
-- `household_account_book_app/frontend/src/pages/Transactions.tsx`
-- `household_account_book_app/frontend/src/pages/Dashboard.tsx`
-- `household_account_book_app/frontend/src/pages/Members.tsx`
-- `household_account_book_app/frontend/src/pages/Reports.tsx`
-- `household_account_book_app/frontend/src/api/index.ts`
-- `household_account_book_app/frontend/src/api/client.ts`
-- `household_account_book_app/frontend/src/types/index.ts`
+- `app/frontend/src/pages/Transactions.tsx`
+- `app/frontend/src/pages/Dashboard.tsx`
+- `app/frontend/src/pages/Members.tsx`
+- `app/frontend/src/pages/Reports.tsx`
+- `app/frontend/src/api/index.ts`
+- `app/frontend/src/api/client.ts`
+- `app/frontend/src/types/index.ts`
 エラー表示・フォーム操作性・ローディング・モバイル対応の問題を検出してください。ユーザーは家族2人（非エンジニア）です。
 ```
 
