@@ -8,4 +8,4 @@ RUN uv sync --frozen --no-dev
 
 COPY src/ ./src/
 
-CMD ["uv", "run", "python", "-m", "household_mcp.server"]
+CMD ["uv", "run", "household-mcp"]
