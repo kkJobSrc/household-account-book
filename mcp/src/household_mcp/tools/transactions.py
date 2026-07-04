@@ -2,9 +2,6 @@ from household_mcp.client import api_get, api_post, api_put, api_delete
 from fastmcp import FastMCP
 from typing import Literal, Optional
 
-import httpx
-import os
-
 mcp = FastMCP("transactions")
 
 
