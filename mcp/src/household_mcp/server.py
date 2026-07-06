@@ -13,4 +13,4 @@ mcp.mount(scheduled_transactions.mcp)
 
 
 def main():
-    mcp.run()
+    mcp.run(transport="streamable-http", host="0.0.0.0", port=8001)
