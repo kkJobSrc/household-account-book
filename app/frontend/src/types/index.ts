@@ -129,3 +129,32 @@ export interface RangeSummaryResponse {
   by_category: RangeSummaryByCat[];
   by_member: RangeSummaryByMember[];
 }
+
+export type OcrStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ReceiptImage {
+  id: number;
+  member_id: number | null;
+  file_hash: string;
+  file_size: number;
+  width: number;
+  height: number;
+  mime_type: string;
+  ocr_status: OcrStatus;
+  ocr_processed_at: string | null;
+  created_at: string;
+}
+
+export interface ReceiptImageUploadResult extends ReceiptImage {
+  duplicate: boolean;
+}
+
+export interface RejectedFile {
+  filename: string;
+  reason: string;
+}
+
+export interface ReceiptImageUploadResponse {
+  uploaded: ReceiptImageUploadResult[];
+  rejected: RejectedFile[];
+}

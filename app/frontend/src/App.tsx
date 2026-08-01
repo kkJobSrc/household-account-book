@@ -4,6 +4,7 @@ import Transactions from './pages/Transactions';
 import Members from './pages/Members';
 import Reports from './pages/Reports';
 import ScheduledTransactions from './pages/ScheduledTransactions';
+import ReceiptUpload from './pages/ReceiptUpload';
 import './App.css';
 
 const navItems = [
@@ -12,6 +13,7 @@ const navItems = [
   { to: '/reports', label: 'レポート', icon: '📊' },
   { to: '/members', label: 'メンバー・カテゴリ', icon: '👥' },
   { to: '/scheduled-transactions', label: '固定費', icon: '📅' },
+  { to: '/receipts', label: 'レシート', icon: '🧾' },
 ];
 
 export default function App() {
@@ -47,6 +49,7 @@ export default function App() {
             <Route path="/reports" element={<Reports />} />
             <Route path="/members" element={<Members />} />
             <Route path="/scheduled-transactions" element={<ScheduledTransactions />} />
+            <Route path="/receipts" element={<ReceiptUpload />} />
           </Routes>
         </main>
 

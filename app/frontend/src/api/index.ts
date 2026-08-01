@@ -1,5 +1,5 @@
 import api from './client';
-import type { Member, Category, Transaction, TransactionCreate, MonthlyReport, MonthlyTrend, RangeSummaryResponse, ScheduledTransaction, ScheduledTransactionCreate } from '../types';
+import type { Member, Category, Transaction, TransactionCreate, MonthlyReport, MonthlyTrend, RangeSummaryResponse, ScheduledTransaction, ScheduledTransactionCreate, ReceiptImage, ReceiptImageUploadResponse } from '../types';
 
 // Members
 export const getMembers = () => api.get<Member[]>('/members/').then(r => r.data);
@@ -95,3 +95,27 @@ export const deleteScheduledTransaction = (id: number) =>
 
 export const applyScheduledTransactions = () =>
   api.post<{ applied: number; skipped: number }>('/scheduled-transactions/apply').then(r => r.data);
+
+// Receipt Images
+export const uploadReceiptImages = (files: File[], memberId?: number) => {
+  const formData = new FormData();
+  files.forEach(file => formData.append('files', file));
+  if (memberId !== undefined) formData.append('member_id', String(memberId));
+  return api
+    .post<ReceiptImageUploadResponse>('/receipt-images/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    .then(r => r.data);
+};
+
+export const getReceiptImages = (params?: {
+  member_id?: number;
+  ocr_status?: string;
+  skip?: number;
+  limit?: number;
+}) => api.get<ReceiptImage[]>('/receipt-images/', { params }).then(r => r.data);
+
+export const deleteReceiptImage = (id: number) => api.delete(`/receipt-images/${id}`);
+
+// Returns the URL for the receipt image binary, usable directly in an <img src="...">
+export const getReceiptImageFileUrl = (id: number) => `/api/receipt-images/${id}/file`;
