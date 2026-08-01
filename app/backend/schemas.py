@@ -195,3 +195,45 @@ class RangeSummaryResponse(BaseModel):
     balance: float
     by_category: List[RangeSummaryByCat]
     by_member: List[RangeSummaryByMember]
+
+
+# ReceiptImage schemas
+class OcrStatus(str, Enum):
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
+
+
+class ReceiptImageResponse(BaseModel):
+    id: int
+    member_id: Optional[int] = None
+    file_hash: str
+    file_size: int
+    width: int
+    height: int
+    mime_type: str
+    ocr_status: OcrStatus
+    ocr_processed_at: Optional[datetime.datetime] = None
+    created_at: datetime.datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ReceiptImageUploadResult(ReceiptImageResponse):
+    duplicate: bool
+
+
+class RejectedFile(BaseModel):
+    filename: str
+    reason: str
+
+
+class ReceiptImageUploadResponse(BaseModel):
+    uploaded: List[ReceiptImageUploadResult]
+    rejected: List[RejectedFile]
+
+
+class TransactionReceiptImageLink(BaseModel):
+    receipt_image_ids: List[int]

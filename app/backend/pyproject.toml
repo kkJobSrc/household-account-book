@@ -8,6 +8,8 @@ dependencies = [
     "sqlalchemy==2.0.30",
     "pydantic==2.7.1",
     "python-multipart==0.0.9",
+    "pillow==10.3.0",
+    "pillow-heif==0.16.0",
 ]
 
 [build-system]

@@ -1,0 +1,13 @@
+# local virtual environment must never be copied into the image
+.venv
+
+__pycache__
+*.pyc
+.pytest_cache
+
+# local runtime artifacts
+logs
+data
+
+.git
+.gitignore
