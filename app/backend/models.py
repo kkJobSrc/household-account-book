@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Enum, Boolean
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Enum, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -74,3 +74,44 @@ class Transaction(Base):
     member = relationship("Member", back_populates="transactions")
     category = relationship("Category", back_populates="transactions")
     scheduled = relationship("ScheduledTransaction", back_populates="transactions")
+    receipt_images = relationship(
+        "ReceiptImage", secondary="transaction_receipt_images", back_populates="transactions"
+    )
+
+
+class OcrStatus(str, enum.Enum):
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
+
+
+class ReceiptImage(Base):
+    __tablename__ = "receipt_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    member_id = Column(Integer, ForeignKey("members.id", ondelete="SET NULL"), nullable=True)
+    storage_path = Column(String, nullable=False)
+    file_hash = Column(String, nullable=False, unique=True, index=True)
+    file_size = Column(Integer, nullable=False)
+    width = Column(Integer, nullable=False)
+    height = Column(Integer, nullable=False)
+    mime_type = Column(String, nullable=False)
+    ocr_status = Column(Enum(OcrStatus), nullable=False, default=OcrStatus.pending)
+    ocr_processed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    member = relationship("Member")
+    transactions = relationship(
+        "Transaction", secondary="transaction_receipt_images", back_populates="receipt_images"
+    )
+
+
+class TransactionReceiptImage(Base):
+    __tablename__ = "transaction_receipt_images"
+    __table_args__ = (UniqueConstraint("transaction_id", "receipt_image_id"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    transaction_id = Column(Integer, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
+    receipt_image_id = Column(Integer, ForeignKey("receipt_images.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

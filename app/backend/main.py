@@ -5,9 +5,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from database import engine
 import models
-from routers import members, categories, transactions, reports, scheduled_transactions
+from routers import members, categories, transactions, reports, scheduled_transactions, receipt_images
 from seed import seed
 from logger import error_logger
+# Importing this module registers the HEIC/HEIF opener with Pillow at
+# startup, so receipt uploads in that format can be opened anywhere in the app.
+import utils.image_processing  # noqa: F401
 
 # テーブル作成
 models.Base.metadata.create_all(bind=engine)
@@ -53,6 +56,7 @@ app.include_router(categories.router)
 app.include_router(transactions.router)
 app.include_router(reports.router)
 app.include_router(scheduled_transactions.router)
+app.include_router(receipt_images.router)
 
 
 @app.exception_handler(Exception)

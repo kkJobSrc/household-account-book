@@ -144,3 +144,77 @@ def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
         db.rollback()
         error_logger.error("Failed to delete transaction: id=%s | %s", transaction_id, exc)
         raise
+
+
+@router.post("/{transaction_id}/receipt-images")
+def link_receipt_images(
+    transaction_id: int,
+    link: schemas.TransactionReceiptImageLink,
+    db: Session = Depends(get_db)
+):
+    transaction = db.query(models.Transaction).filter(models.Transaction.id == transaction_id).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    try:
+        linked_ids = []
+        missing_ids = []
+        for receipt_image_id in link.receipt_image_ids:
+            receipt_image = db.query(models.ReceiptImage).filter(
+                models.ReceiptImage.id == receipt_image_id
+            ).first()
+            if not receipt_image:
+                missing_ids.append(receipt_image_id)
+                continue
+
+            # Skip combinations that already exist to avoid violating the
+            # UniqueConstraint on (transaction_id, receipt_image_id).
+            existing_link = db.query(models.TransactionReceiptImage).filter(
+                models.TransactionReceiptImage.transaction_id == transaction_id,
+                models.TransactionReceiptImage.receipt_image_id == receipt_image_id
+            ).first()
+            if existing_link:
+                linked_ids.append(receipt_image_id)
+                continue
+
+            db.add(models.TransactionReceiptImage(
+                transaction_id=transaction_id,
+                receipt_image_id=receipt_image_id
+            ))
+            linked_ids.append(receipt_image_id)
+
+        db.commit()
+        db_logger.info(
+            "receipt images linked: transaction_id=%s | linked=%s | missing=%s",
+            transaction_id, linked_ids, missing_ids
+        )
+        return {"linked": linked_ids, "missing": missing_ids}
+    except Exception as exc:
+        db.rollback()
+        error_logger.error("Failed to link receipt images: transaction_id=%s | %s", transaction_id, exc)
+        raise
+
+
+@router.delete("/{transaction_id}/receipt-images/{receipt_image_id}")
+def unlink_receipt_image(transaction_id: int, receipt_image_id: int, db: Session = Depends(get_db)):
+    link = db.query(models.TransactionReceiptImage).filter(
+        models.TransactionReceiptImage.transaction_id == transaction_id,
+        models.TransactionReceiptImage.receipt_image_id == receipt_image_id
+    ).first()
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    try:
+        db.delete(link)
+        db.commit()
+        db_logger.info(
+            "receipt image unlinked: transaction_id=%s | receipt_image_id=%s",
+            transaction_id, receipt_image_id
+        )
+        return {"message": "Receipt image unlinked"}
+    except Exception as exc:
+        db.rollback()
+        error_logger.error(
+            "Failed to unlink receipt image: transaction_id=%s | receipt_image_id=%s | %s",
+            transaction_id, receipt_image_id, exc
+        )
+        raise
