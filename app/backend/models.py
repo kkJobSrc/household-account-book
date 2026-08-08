@@ -105,6 +105,36 @@ class ReceiptImage(Base):
     transactions = relationship(
         "Transaction", secondary="transaction_receipt_images", back_populates="receipt_images"
     )
+    ocr_results = relationship(
+        "ReceiptOcrResult", back_populates="receipt_image", cascade="all, delete-orphan"
+    )
+
+
+class ReceiptOcrResult(Base):
+    """Append-only history of OCR attempts for a receipt image.
+
+    Rows are never updated/overwritten; every scan or manual re-run inserts
+    a new row so past attempts can still be inspected/compared later. The
+    "current" status lives on ReceiptImage.ocr_status instead.
+    """
+    __tablename__ = "receipt_ocr_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    receipt_image_id = Column(Integer, ForeignKey("receipt_images.id", ondelete="CASCADE"), nullable=False)
+    # Plain String (not Enum) because SQLite can't ALTER a CHECK constraint
+    # in place, so adding a new OCR engine later would require a full table
+    # rebuild if this were an Enum column.
+    engine = Column(String, nullable=False)
+    raw_text = Column(String, nullable=True)
+    # JSON-serialized OcrLine list ({"text", "confidence", "box"} per line),
+    # kept as TEXT since SQLite has no native JSON column type.
+    raw_json = Column(String, nullable=True)
+    status = Column(String, nullable=False)
+    error_message = Column(String, nullable=True)
+    processing_time_ms = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    receipt_image = relationship("ReceiptImage", back_populates="ocr_results")
 
 
 class TransactionReceiptImage(Base):

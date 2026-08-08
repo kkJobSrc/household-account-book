@@ -1,3 +1,4 @@
+import asyncio
 import os
 import uuid
 from datetime import datetime, date as date_type
@@ -11,6 +12,7 @@ import models
 import schemas
 from database import get_db
 from logger import db_logger, error_logger
+from services.ocr_processing import process_pending_receipts
 from utils.image_processing import (
     UnsupportedImageError,
     compress_image,
@@ -205,3 +207,29 @@ def delete_receipt_image(receipt_image_id: int, db: Session = Depends(get_db)):
         db.rollback()
         error_logger.error("Failed to delete receipt image: id=%s | %s", receipt_image_id, exc)
         raise
+
+
+@router.post("/ocr/rerun", response_model=schemas.OcrRerunResponse)
+async def rerun_ocr(payload: schemas.OcrRerunRequest, db: Session = Depends(get_db)):
+    if payload.receipt_image_id is not None:
+        image = (
+            db.query(models.ReceiptImage)
+            .filter(models.ReceiptImage.id == payload.receipt_image_id)
+            .first()
+        )
+        if not image:
+            raise HTTPException(status_code=404, detail="Receipt image not found")
+
+    try:
+        # Delegate to the same processing function the hourly scheduler
+        # uses (see services/ocr_processing.py) so the claim/status-
+        # transition logic is never duplicated between the two entry
+        # points. process_pending_receipts() does blocking DB + HTTP work,
+        # so it's offloaded to a worker thread here to keep the event loop free.
+        await asyncio.to_thread(process_pending_receipts, receipt_image_id=payload.receipt_image_id)
+        db_logger.info("OCR rerun triggered: receipt_image_id=%s", payload.receipt_image_id)
+    except Exception as exc:
+        error_logger.error("OCR rerun failed to run: receipt_image_id=%s | %s", payload.receipt_image_id, exc)
+        raise
+
+    return schemas.OcrRerunResponse(message="OCR rerun triggered", receipt_image_id=payload.receipt_image_id)

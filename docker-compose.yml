@@ -11,12 +11,17 @@ services:
       - ./app/backend/logs:/app/logs
     environment:
       - DATABASE_URL=sqlite:///./data/kakeibo.db
+      - OCR_SERVICE_URL=http://ocr:8002
+      - OCR_REQUEST_TIMEOUT=30
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
       interval: 5s
       timeout: 3s
       retries: 5
+    # No depends_on: ocr here on purpose -- the household-account-book core
+    # (backend/frontend) must keep working even when the optional OCR
+    # profile (see the "ocr" service below) is not started.
 
   frontend:
     build:
@@ -42,6 +47,20 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  ocr:
+    build: ./ocr
+    container_name: kakeibo-ocr
+    environment:
+      - OCR_LANG=japan
+    volumes:
+      - paddle-models:/root/.paddleocr
+    restart: unless-stopped
+    # Optional service: only started with `docker compose --profile ocr up -d`.
+    # No "ports:" mapping -- reachable only from other containers on the
+    # compose network (backend calls it at http://ocr:8002).
+    profiles:
+      - ocr
+
   playwright:
     image: mcr.microsoft.com/playwright/python:v1.52.0-noble
     container_name: kakeibo-playwright
@@ -55,3 +74,4 @@ services:
 
 volumes:
   db-data:
+  paddle-models:
