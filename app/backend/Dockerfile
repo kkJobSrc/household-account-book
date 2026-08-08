@@ -11,5 +11,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY . .
 
 RUN mkdir -p /app/data /app/logs
+RUN chmod +x /app/entrypoint.sh
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["./entrypoint.sh"]

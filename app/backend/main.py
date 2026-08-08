@@ -2,9 +2,6 @@ import traceback
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
-from database import engine
-import models
 from routers import members, categories, transactions, reports, scheduled_transactions, receipt_images
 from seed import seed
 from logger import error_logger
@@ -12,25 +9,8 @@ from logger import error_logger
 # startup, so receipt uploads in that format can be opened anywhere in the app.
 import utils.image_processing  # noqa: F401
 
-# テーブル作成
-models.Base.metadata.create_all(bind=engine)
-
-# 既存 DB への追加カラムマイグレーション
-with engine.connect() as _conn:
-    try:
-        _conn.execute(text("ALTER TABLE categories ADD COLUMN memo VARCHAR NOT NULL DEFAULT ''"))
-        _conn.commit()
-    except Exception:
-        pass  # カラムが既に存在する場合は無視
-
-with engine.connect() as _conn:
-    try:
-        _conn.execute(text(
-            "ALTER TABLE transactions ADD COLUMN scheduled_transaction_id INTEGER REFERENCES scheduled_transactions(id) ON DELETE SET NULL"
-        ))
-        _conn.commit()
-    except Exception:
-        pass  # カラムが既に存在する場合は無視
+# Schema creation/migration is now fully managed by Alembic
+# (see alembic/ and entrypoint.sh). This module no longer touches DDL.
 
 # 初期データ投入
 seed()
