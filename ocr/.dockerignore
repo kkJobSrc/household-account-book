@@ -1,0 +1,12 @@
+# local virtual environment must never be copied into the image
+.venv
+
+__pycache__
+*.pyc
+.pytest_cache
+
+# local runtime artifacts (see ocr_service/config.py OCR_MODEL_CACHE_DIR)
+.paddleocr
+
+.git
+.gitignore

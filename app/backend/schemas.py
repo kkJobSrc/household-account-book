@@ -237,3 +237,15 @@ class ReceiptImageUploadResponse(BaseModel):
 
 class TransactionReceiptImageLink(BaseModel):
     receipt_image_ids: List[int]
+
+
+# OCR rerun schemas
+class OcrRerunRequest(BaseModel):
+    # None means "scan every currently-pending receipt image", matching the
+    # scheduled scan's target selection.
+    receipt_image_id: Optional[int] = None
+
+
+class OcrRerunResponse(BaseModel):
+    message: str
+    receipt_image_id: Optional[int] = None

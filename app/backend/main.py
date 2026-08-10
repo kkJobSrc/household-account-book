@@ -1,44 +1,39 @@
 import traceback
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
-from database import engine
-import models
 from routers import members, categories, transactions, reports, scheduled_transactions, receipt_images
+from scheduler import shutdown_scheduler, start_scheduler
 from seed import seed
 from logger import error_logger
 # Importing this module registers the HEIC/HEIF opener with Pillow at
 # startup, so receipt uploads in that format can be opened anywhere in the app.
 import utils.image_processing  # noqa: F401
 
-# テーブル作成
-models.Base.metadata.create_all(bind=engine)
+# Schema creation/migration is now fully managed by Alembic
+# (see alembic/ and entrypoint.sh). This module no longer touches DDL.
 
-# 既存 DB への追加カラムマイグレーション
-with engine.connect() as _conn:
-    try:
-        _conn.execute(text("ALTER TABLE categories ADD COLUMN memo VARCHAR NOT NULL DEFAULT ''"))
-        _conn.commit()
-    except Exception:
-        pass  # カラムが既に存在する場合は無視
 
-with engine.connect() as _conn:
-    try:
-        _conn.execute(text(
-            "ALTER TABLE transactions ADD COLUMN scheduled_transaction_id INTEGER REFERENCES scheduled_transactions(id) ON DELETE SET NULL"
-        ))
-        _conn.commit()
-    except Exception:
-        pass  # カラムが既に存在する場合は無視
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: seed default category data, then start the hourly receipt
+    # OCR scan job. @app.on_event is deprecated in FastAPI, so lifespan is
+    # used instead (see issue #32).
+    seed()
+    start_scheduler()
+    yield
+    # Shutdown: stop the scheduler before the process exits so no job fires
+    # against a DB connection that's already being torn down.
+    shutdown_scheduler()
 
-# 初期データ投入
-seed()
 
 app = FastAPI(
     title="家計簿API",
     description="家族で使える家計簿アプリのAPI",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS設定（家庭内Wi-Fi利用を想定）
