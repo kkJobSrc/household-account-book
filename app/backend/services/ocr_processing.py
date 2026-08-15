@@ -24,6 +24,14 @@ from database import SessionLocal
 from logger import db_logger, error_logger
 from services import ocr_client
 
+# Cap on consecutive OCR attempts per receipt image before giving up
+# permanently. "Attempt" here means one call into ocr_client.process_image()
+# that resulted in a transient failure (OcrEngineNotReadyError) and was
+# requeued via _requeue_pending(). Once ocr_attempt_count reaches this value
+# (i.e. the initial attempt plus MAX_OCR_ATTEMPTS - 1 retries), the receipt
+# is marked "failed" instead of being requeued again.
+MAX_OCR_ATTEMPTS = 5
+
 
 def process_pending_receipts(receipt_image_id: Optional[int] = None) -> None:
     """Scan and OCR receipt images.
@@ -158,6 +166,8 @@ def _record_success(db: Session, receipt_image_id: int, result: ocr_client.OcrPr
             {
                 "ocr_status": models.OcrStatus.completed,
                 "ocr_processed_at": datetime.now(timezone.utc),
+                # Reset the retry counter now that this receipt has succeeded.
+                "ocr_attempt_count": 0,
             },
             synchronize_session=False,
         )
@@ -195,11 +205,49 @@ def _record_failure(db: Session, receipt_image_id: int, error_message: str) -> N
 
 
 def _requeue_pending(db: Session, receipt_image_id: int) -> None:
+    """Handle a transient OCR failure (503/timeout/connection error).
+
+    Increments ocr_attempt_count first. If that push reaches
+    MAX_OCR_ATTEMPTS, the receipt is given up on permanently (status
+    "failed" + a ReceiptOcrResult history row, mirroring _record_failure())
+    instead of being requeued yet again. Below the cap, behavior is
+    unchanged from before: just flip ocr_status back to "pending" so the
+    next scan picks it up.
+    """
     try:
-        db.query(models.ReceiptImage).filter(models.ReceiptImage.id == receipt_image_id).update(
-            {"ocr_status": models.OcrStatus.pending}, synchronize_session=False
-        )
-        db.commit()
+        image = db.query(models.ReceiptImage).filter(models.ReceiptImage.id == receipt_image_id).first()
+        if image is None:
+            # Should not happen (we just claimed this row), but guard defensively.
+            error_logger.error("Requeue requested for missing receipt_image_id=%s", receipt_image_id)
+            return
+
+        attempt_count = image.ocr_attempt_count + 1
+
+        if attempt_count >= MAX_OCR_ATTEMPTS:
+            db.add(
+                models.ReceiptOcrResult(
+                    receipt_image_id=receipt_image_id,
+                    engine=ocr_client.ENGINE_NAME,
+                    status="failed",
+                    error_message=f"Max retry attempts ({MAX_OCR_ATTEMPTS}) exceeded",
+                )
+            )
+            db.query(models.ReceiptImage).filter(models.ReceiptImage.id == receipt_image_id).update(
+                {"ocr_status": models.OcrStatus.failed, "ocr_attempt_count": attempt_count},
+                synchronize_session=False,
+            )
+            db.commit()
+            db_logger.info(
+                "OCR retry attempts exhausted, marked as failed: receipt_image_id=%s attempt_count=%s",
+                receipt_image_id,
+                attempt_count,
+            )
+        else:
+            db.query(models.ReceiptImage).filter(models.ReceiptImage.id == receipt_image_id).update(
+                {"ocr_status": models.OcrStatus.pending, "ocr_attempt_count": attempt_count},
+                synchronize_session=False,
+            )
+            db.commit()
     except Exception as exc:
         db.rollback()
         error_logger.error("Failed to requeue receipt image after 503/timeout: id=%s | %s", receipt_image_id, exc)
