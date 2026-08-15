@@ -249,3 +249,7 @@ class OcrRerunRequest(BaseModel):
 class OcrRerunResponse(BaseModel):
     message: str
     receipt_image_id: Optional[int] = None
+
+
+class OcrStatusResponse(BaseModel):
+    healthy: bool
