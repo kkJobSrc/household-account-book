@@ -12,6 +12,7 @@ import models
 import schemas
 from database import get_db
 from logger import db_logger, error_logger
+from services import ocr_client
 from services.ocr_processing import process_pending_receipts
 from utils.image_processing import (
     UnsupportedImageError,
@@ -209,6 +210,11 @@ def delete_receipt_image(receipt_image_id: int, db: Session = Depends(get_db)):
         raise
 
 
+@router.get("/ocr/status", response_model=schemas.OcrStatusResponse)
+def get_ocr_status():
+    return schemas.OcrStatusResponse(healthy=ocr_client.check_health())
+
+
 @router.post("/ocr/rerun", response_model=schemas.OcrRerunResponse)
 async def rerun_ocr(payload: schemas.OcrRerunRequest, db: Session = Depends(get_db)):
     if payload.receipt_image_id is not None:
@@ -219,6 +225,12 @@ async def rerun_ocr(payload: schemas.OcrRerunRequest, db: Session = Depends(get_
         )
         if not image:
             raise HTTPException(status_code=404, detail="Receipt image not found")
+
+    # Fail fast with a clear 503 instead of silently returning 200 while
+    # queuing work that process_pending_receipts() will just skip anyway
+    # (it does its own health check and no-ops if the OCR service is down).
+    if not ocr_client.check_health():
+        raise HTTPException(status_code=503, detail="OCR service is unavailable")
 
     try:
         # Delegate to the same processing function the hourly scheduler
