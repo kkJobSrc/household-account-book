@@ -99,6 +99,10 @@ class ReceiptImage(Base):
     mime_type = Column(String, nullable=False)
     ocr_status = Column(Enum(OcrStatus), nullable=False, default=OcrStatus.pending)
     ocr_processed_at = Column(DateTime(timezone=True), nullable=True)
+    # Counts consecutive OCR attempts (incremented on each transient
+    # failure/requeue); reset to 0 on success. See services/ocr_processing.py
+    # MAX_OCR_ATTEMPTS for the retry cap that consults this column.
+    ocr_attempt_count = Column(Integer, nullable=False, default=0, server_default="0")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     member = relationship("Member")
