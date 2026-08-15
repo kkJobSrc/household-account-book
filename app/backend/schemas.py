@@ -221,6 +221,21 @@ class ReceiptImageResponse(BaseModel):
         from_attributes = True
 
 
+class ReceiptOcrResultResponse(BaseModel):
+    # id, receipt_image_id, and raw_json are intentionally excluded: the LLM
+    # only needs the recognized text/status, and raw_json (per-line box
+    # coordinates + confidence) would add token cost with no practical use.
+    engine: str
+    raw_text: Optional[str] = None
+    status: str
+    error_message: Optional[str] = None
+    processing_time_ms: Optional[int] = None
+    created_at: datetime.datetime
+
+    class Config:
+        from_attributes = True
+
+
 class ReceiptImageUploadResult(ReceiptImageResponse):
     duplicate: bool
 
