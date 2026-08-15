@@ -159,6 +159,7 @@ async def upload_receipt_images(
 def get_receipt_images(
     member_id: Optional[int] = None,
     ocr_status: Optional[schemas.OcrStatus] = None,
+    linked: Optional[bool] = None,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -168,6 +169,13 @@ def get_receipt_images(
         query = query.filter(models.ReceiptImage.member_id == member_id)
     if ocr_status is not None:
         query = query.filter(models.ReceiptImage.ocr_status == ocr_status)
+    if linked is not None:
+        # .any() compiles to a correlated EXISTS subquery, so filtering stays
+        # a single SQL statement instead of loading transactions per row.
+        if linked:
+            query = query.filter(models.ReceiptImage.transactions.any())
+        else:
+            query = query.filter(~models.ReceiptImage.transactions.any())
     return query.order_by(models.ReceiptImage.id.desc()).offset(skip).limit(limit).all()
 
 
@@ -187,6 +195,24 @@ def get_receipt_image_file(receipt_image_id: int, db: Session = Depends(get_db))
     if not os.path.exists(image.storage_path):
         raise HTTPException(status_code=404, detail="Receipt image file not found")
     return FileResponse(image.storage_path, media_type=image.mime_type)
+
+
+@router.get("/{receipt_image_id}/ocr-result", response_model=schemas.ReceiptOcrResultResponse)
+def get_receipt_ocr_result(receipt_image_id: int, db: Session = Depends(get_db)):
+    image = db.query(models.ReceiptImage).filter(models.ReceiptImage.id == receipt_image_id).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Receipt image not found")
+    # receipt_ocr_results is append-only history: the highest id is the most
+    # recent attempt (see models.ReceiptOcrResult docstring).
+    result = (
+        db.query(models.ReceiptOcrResult)
+        .filter(models.ReceiptOcrResult.receipt_image_id == receipt_image_id)
+        .order_by(models.ReceiptOcrResult.id.desc())
+        .first()
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="OCR result not found")
+    return result
 
 
 @router.delete("/{receipt_image_id}")

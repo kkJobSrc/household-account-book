@@ -1,5 +1,5 @@
 from fastmcp import FastMCP
-from household_mcp.tools import categories, members, scheduled_transactions, transactions
+from household_mcp.tools import categories, members, receipts, scheduled_transactions, transactions
 
 mcp = FastMCP(
     name="household_mcp",
@@ -10,6 +10,7 @@ mcp.mount(transactions.mcp)
 mcp.mount(members.mcp)
 mcp.mount(categories.mcp)
 mcp.mount(scheduled_transactions.mcp)
+mcp.mount(receipts.mcp)
 
 
 def main():

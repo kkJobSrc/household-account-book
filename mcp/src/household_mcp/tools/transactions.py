@@ -64,3 +64,24 @@ async def create_transaction(
                 "member_id": member_id,
                 "category_id": category_id
             })
+
+
+@mcp.tool()
+async def link_receipt_images(
+    transaction_id: int,
+    receipt_image_ids: list[int]
+) -> dict:
+    """取引にレシート画像を紐付ける。"""
+    return await api_post(f"/transactions/{transaction_id}/receipt-images",
+            {
+                "receipt_image_ids": receipt_image_ids
+            })
+
+
+@mcp.tool()
+async def unlink_receipt_image(
+    transaction_id: int,
+    receipt_image_id: int
+) -> dict:
+    """取引とレシート画像の紐付けを解除する。"""
+    return await api_delete(f"/transactions/{transaction_id}/receipt-images/{receipt_image_id}")
