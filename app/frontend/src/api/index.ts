@@ -93,8 +93,14 @@ export const updateScheduledTransaction = (
 export const deleteScheduledTransaction = (id: number) =>
   api.delete(`/scheduled-transactions/${id}`);
 
-export const applyScheduledTransactions = () =>
-  api.post<{ applied: number; skipped: number }>('/scheduled-transactions/apply').then(r => r.data);
+// Applies active schedules to the given year/month; omit both to target the current month
+export const applyScheduledTransactions = (year?: number, month?: number) =>
+  api
+    .post<{ applied: number; skipped: number; year: number; month: number }>(
+      '/scheduled-transactions/apply',
+      year !== undefined && month !== undefined ? { year, month } : {}
+    )
+    .then(r => r.data);
 
 // Receipt Images
 export const uploadReceiptImages = (files: File[], memberId?: number) => {

@@ -51,11 +51,19 @@ def create_scheduled_transaction(
 
 # NOTE: /apply は /{id} より前に定義すること（パスの競合回避）
 @router.post("/apply")
-def apply_scheduled_transactions(db: Session = Depends(get_db)):
+def apply_scheduled_transactions(
+    data: Optional[schemas.ScheduledTransactionApplyRequest] = None,
+    db: Session = Depends(get_db)
+):
     # NOTE: 同一家族での利用を前提に、並行リクエストによる重複作成リスクは許容する
-    today = datetime.date.today()
-    current_year = today.year
-    current_month = today.month
+    # Body is optional: no body / {} applies to the current month (backward compatible)
+    if data is not None and data.year is not None:
+        current_year = data.year
+        current_month = data.month
+    else:
+        today = datetime.date.today()
+        current_year = today.year
+        current_month = today.month
 
     active_schedules = db.query(models.ScheduledTransaction).filter(
         models.ScheduledTransaction.is_active == True
@@ -98,7 +106,12 @@ def apply_scheduled_transactions(db: Session = Depends(get_db)):
         error_logger.error("Failed to apply scheduled_transactions: %s", exc)
         raise
 
-    return {"applied": applied_count, "skipped": skipped_count}
+    return {
+        "applied": applied_count,
+        "skipped": skipped_count,
+        "year": current_year,
+        "month": current_month,
+    }
 
 
 @router.put("/{scheduled_id}", response_model=schemas.ScheduledTransactionResponse)
