@@ -87,6 +87,13 @@ async def update_scheduled_transaction(
 
 
 @mcp.tool()
-async def apply_scheduled_transactions() -> dict:
-    """定期取引を当月の取引として一括適用する。戻り値は applied（適用数）と skipped（スキップ数）。"""
-    return await api_post("/scheduled-transactions/apply", {})
+async def apply_scheduled_transactions(
+    year: Optional[Annotated[int, Field(ge=2000, le=2100)]] = None,
+    month: Optional[Annotated[int, Field(ge=1, le=12)]] = None,
+) -> dict:
+    """定期取引を指定した年月の取引として一括適用する。year/month は両方指定するか両方省略する（省略時は当月）。
+    登録済みの項目はスキップされる。戻り値は applied（適用数）・skipped（スキップ数）・year・month（適用先年月）。"""
+    body: dict = {}
+    if year is not None or month is not None:
+        body = {"year": year, "month": month}
+    return await api_post("/scheduled-transactions/apply", body)

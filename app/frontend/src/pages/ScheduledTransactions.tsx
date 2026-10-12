@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { format } from 'date-fns';
 import {
   getScheduledTransactions,
   createScheduledTransaction,
@@ -8,44 +9,48 @@ import {
   getCategories,
   getMembers,
 } from '../api';
-import type { ScheduledTransaction, ScheduledTransactionCreate, Category, Member, TransactionType } from '../types';
+import type { ScheduledTransaction, Category, Member, TransactionType } from '../types';
 
-const TYPE_LABELS: Record<TransactionType, string> = {
-  income: '収入',
-  expense: '支出',
-  deduction: '控除',
-};
+const formatAmount = (n: number) => n.toLocaleString('ja-JP');
 
-const EMPTY_FORM: ScheduledTransactionCreate = {
+// day_of_month is limited to 1-28 to avoid month-length differences
+const DAY_OPTIONS = Array.from({ length: 28 }, (_, i) => i + 1);
+
+interface FormState {
+  name: string;
+  type: TransactionType;
+  amount: string;
+  category_id: string;
+  member_id: string;
+  day_of_month: string;
+  memo: string;
+  is_active: boolean;
+}
+
+const defaultForm = (): FormState => ({
   name: '',
   type: 'expense',
-  amount: 0,
-  category_id: null,
-  member_id: null,
-  day_of_month: 1,
+  amount: '',
+  category_id: '',
+  member_id: '',
+  day_of_month: '1',
   memo: '',
   is_active: true,
-};
+});
 
 export default function ScheduledTransactions() {
   const [schedules, setSchedules] = useState<ScheduledTransaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editTarget, setEditTarget] = useState<ScheduledTransaction | null>(null);
-  const [form, setForm] = useState<ScheduledTransactionCreate>(EMPTY_FORM);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [editingSt, setEditingSt] = useState<ScheduledTransaction | null>(null);
+  const [form, setForm] = useState<FormState>(defaultForm());
+  const [saving, setSaving] = useState(false);
+  const [applyMonth, setApplyMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [applying, setApplying] = useState(false);
-  const [openSwipeId, setOpenSwipeId] = useState<number | null>(null);
-  const touchStartX = useRef<number>(0);
 
-  const showToast = (message: string, type: 'success' | 'error') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
-  };
-
-  const fetchAll = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const [s, c, m] = await Promise.all([
@@ -57,420 +62,414 @@ export default function ScheduledTransactions() {
       setCategories(c);
       setMembers(m);
     } catch {
-      showToast('データの取得に失敗しました', 'error');
+      alert('データの取得に失敗しました。通信状況を確認してください。');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+    load();
+  }, [load]);
 
   const filteredCategories = categories.filter(c => c.type === form.type);
+  const activeCount = schedules.filter(s => s.is_active).length;
 
-  const handleOpenCreate = () => {
-    setEditTarget(null);
-    setForm(EMPTY_FORM);
-    setShowForm(true);
+  // --- Modal open/close ---
+  const openCreate = () => {
+    setEditingSt(null);
+    setForm(defaultForm());
+    setShowModal(true);
   };
 
-  const handleOpenEdit = (st: ScheduledTransaction) => {
-    setEditTarget(st);
+  const openEdit = (st: ScheduledTransaction) => {
+    setEditingSt(st);
     setForm({
       name: st.name,
       type: st.type,
-      amount: st.amount,
-      category_id: st.category_id,
-      member_id: st.member_id,
-      day_of_month: st.day_of_month,
+      amount: String(st.amount),
+      category_id: st.category_id ? String(st.category_id) : '',
+      member_id: st.member_id ? String(st.member_id) : '',
+      day_of_month: String(st.day_of_month),
       memo: st.memo,
       is_active: st.is_active,
     });
-    setShowForm(true);
+    setShowModal(true);
   };
 
-  const handleCancel = () => {
-    setShowForm(false);
-    setEditTarget(null);
-    setForm(EMPTY_FORM);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (form.amount <= 0) {
-      showToast('金額は1以上を入力してください', 'error');
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.amount) return;
+    const amountNum = parseFloat(form.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert('金額は1以上の数値を入力してください');
       return;
     }
-    if (form.day_of_month < 1 || form.day_of_month > 28) {
-      showToast('登録日は1〜28の間で入力してください', 'error');
-      return;
-    }
+    setSaving(true);
+    const payload = {
+      name: form.name.trim(),
+      type: form.type,
+      amount: amountNum,
+      category_id: form.category_id ? parseInt(form.category_id) : null,
+      member_id: form.member_id ? parseInt(form.member_id) : null,
+      day_of_month: parseInt(form.day_of_month),
+      memo: form.memo,
+      is_active: form.is_active,
+    };
     try {
-      if (editTarget) {
-        await updateScheduledTransaction(editTarget.id, form);
-        showToast('固定費を更新しました', 'success');
+      if (editingSt) {
+        await updateScheduledTransaction(editingSt.id, payload);
       } else {
-        await createScheduledTransaction(form);
-        showToast('固定費を登録しました', 'success');
+        await createScheduledTransaction(payload);
       }
-      handleCancel();
-      fetchAll();
+      setShowModal(false);
+      load();
     } catch {
-      showToast(editTarget ? '更新に失敗しました' : '登録に失敗しました', 'error');
+      alert('保存に失敗しました。通信状況を確認してください。');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id: number, name: string) => {
-    if (!window.confirm(`「${name}」を削除しますか？`)) return;
+  const handleDelete = async (id: number) => {
+    if (!confirm('この固定費を削除しますか？')) return;
     try {
       await deleteScheduledTransaction(id);
-      showToast('固定費を削除しました', 'success');
-      fetchAll();
+      load();
     } catch {
-      showToast('削除に失敗しました', 'error');
+      alert('削除に失敗しました。通信状況を確認してください。');
     }
   };
 
+  // --- Bulk apply to the selected month ---
   const handleApply = async () => {
-    if (!window.confirm('今月分の固定費を一括入力しますか？（既に入力済みの項目はスキップされます）')) return;
+    if (!applyMonth) return;
+    const [year, month] = applyMonth.split('-').map(Number);
+    if (!confirm(`${year}年${month}月分の固定費を一括登録しますか？（登録済みの項目はスキップされます）`)) return;
     setApplying(true);
     try {
-      const result = await applyScheduledTransactions();
-      showToast(`${result.applied}件を入力しました（${result.skipped}件はスキップ）`, 'success');
-      fetchAll();
+      const result = await applyScheduledTransactions(year, month);
+      alert(`${result.year}年${result.month}月分: ${result.applied}件を登録しました（${result.skipped}件はスキップ）`);
     } catch {
-      showToast('一括入力に失敗しました', 'error');
+      alert('一括登録に失敗しました。通信状況を確認してください。');
     } finally {
       setApplying(false);
     }
   };
 
-  const handleFormChange = (field: keyof ScheduledTransactionCreate, value: string | number | boolean | null) => {
-    setForm(prev => {
-      const updated = { ...prev, [field]: value };
-      // タイプが変わったらカテゴリをリセット
-      if (field === 'type') {
-        updated.category_id = null;
-      }
-      return updated;
-    });
-  };
-
-  if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>読み込み中...</div>;
-  }
-
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '900px', margin: '0 auto' }}>
-      {/* Toast */}
-      {toast && (
-        <div style={{
-          position: 'fixed', top: '1rem', right: '1rem', zIndex: 1000,
-          padding: '0.75rem 1.25rem',
-          borderRadius: '8px',
-          backgroundColor: toast.type === 'success' ? '#4caf50' : '#f44336',
-          color: '#fff',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-          fontSize: '0.9rem',
-        }}>
-          {toast.message}
-        </div>
-      )}
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">固定費の自動入力</h1>
+        <button className="btn btn-primary" onClick={openCreate}>
+          ＋ 新規作成
+        </button>
+      </div>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem' }}>固定費の自動入力</h1>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+      {/* Bulk apply */}
+      <div className="card st-apply">
+        <div className="st-apply-label">
+          <span className="form-label" style={{ marginBottom: 0 }}>一括登録する月</span>
+          <span className="st-apply-hint">有効な固定費をその月の取引として登録します</span>
+        </div>
+        <div className="st-apply-controls">
+          <input
+            type="month"
+            className="form-control st-apply-month"
+            value={applyMonth}
+            onChange={e => setApplyMonth(e.target.value)}
+          />
           <button
+            className="btn btn-primary"
             onClick={handleApply}
-            disabled={applying || schedules.filter(s => s.is_active).length === 0}
-            style={{
-              padding: '0.5rem 1.25rem',
-              backgroundColor: '#ff9800',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: applying ? 'not-allowed' : 'pointer',
-              fontWeight: 'bold',
-              opacity: applying ? 0.7 : 1,
-            }}
+            disabled={applying || !applyMonth || activeCount === 0}
           >
-            {applying ? '処理中...' : '一括登録'}
-          </button>
-          <button
-            onClick={handleOpenCreate}
-            style={{
-              padding: '0.5rem 1.25rem',
-              backgroundColor: '#1976d2',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
-            + 新規作成
+            {applying ? '登録中...' : '一括登録'}
           </button>
         </div>
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
-        <div style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 900,
-        }}>
-          <div style={{
-            backgroundColor: '#fff', borderRadius: '10px', padding: '2rem',
-            width: '100%', maxWidth: '480px', boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-          }}>
-            <h2 style={{ marginTop: 0 }}>{editTarget ? '固定費を編集' : '固定費を登録'}</h2>
-            <form
-              onSubmit={handleSubmit}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                }
-              }}
-            >
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>予定名 *</label>
-                <input
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={e => handleFormChange('name', e.target.value)}
-                  placeholder="例: 家賃、電気代"
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>種別 *</label>
-                <select
-                  value={form.type}
-                  onChange={e => handleFormChange('type', e.target.value as TransactionType)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                >
-                  <option value="expense">支出</option>
-                  <option value="income">収入</option>
-                  <option value="deduction">控除</option>
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>金額 (円) *</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]+"
-                  required
-                  value={form.amount || ''}
-                  onChange={e => handleFormChange('amount', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>登録日 *</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]+"
-                  required
-                  value={form.day_of_month}
-                  onChange={e => handleFormChange('day_of_month', Number(e.target.value))}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                />
-                <small style={{ color: '#666', fontSize: '0.8rem' }}>
-                  1〜28の日付を入力してください（月末日の違いを避けるため）
-                </small>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>カテゴリ</label>
-                <select
-                  value={form.category_id ?? ''}
-                  onChange={e => handleFormChange('category_id', e.target.value ? Number(e.target.value) : null)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                >
-                  <option value="">未選択</option>
-                  {filteredCategories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>メンバー</label>
-                <select
-                  value={form.member_id ?? ''}
-                  onChange={e => handleFormChange('member_id', e.target.value ? Number(e.target.value) : null)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                >
-                  <option value="">未選択</option>
-                  {members.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold' }}>メモ</label>
-                <input
-                  type="text"
-                  value={form.memo ?? ''}
-                  onChange={e => handleFormChange('memo', e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={form.is_active ?? true}
-                    onChange={e => handleFormChange('is_active', e.target.checked)}
-                  />
-                  <span style={{ fontWeight: 'bold' }}>有効</span>
-                </label>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  style={{
-                    padding: '0.5rem 1.25rem', borderRadius: '6px',
-                    border: '1px solid #ccc', cursor: 'pointer', backgroundColor: '#fff',
-                  }}
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '0.5rem 1.25rem', borderRadius: '6px',
-                    backgroundColor: '#1976d2', color: '#fff', border: 'none',
-                    cursor: 'pointer', fontWeight: 'bold',
-                  }}
-                >
-                  {editTarget ? '更新する' : '登録する'}
-                </button>
-              </div>
-            </form>
+      {/* Schedule List */}
+      {loading ? (
+        <div className="loading">読み込み中...</div>
+      ) : schedules.length === 0 ? (
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon">📅</div>
+            <p>固定費が登録されていません。「＋ 新規作成」から追加してください。</p>
           </div>
         </div>
-      )}
-
-      {/* List */}
-      {schedules.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
-          固定費が登録されていません。「+ 新規登録」から追加してください。
-        </div>
       ) : (
-        <div style={{ borderTop: '1px solid #e0e0e0' }}>
-          {schedules.map(st => (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {schedules.map((st, i) => (
             <div
               key={st.id}
-              style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid #e0e0e0' }}
+              className={`st-item ${i > 0 ? 'st-item-border' : ''} ${st.is_active ? '' : 'st-item-inactive'}`}
             >
-              {/* Swipeable content */}
-              <div
-                style={{
-                  transform: openSwipeId === st.id ? 'translateX(-80px)' : 'translateX(0)',
-                  transition: 'transform 200ms ease',
-                  padding: '0.75rem 1rem',
-                  backgroundColor: st.is_active ? '#fff' : '#fafafa',
-                  opacity: st.is_active ? 1 : 0.5,
-                  userSelect: 'none',
-                }}
-                onTouchStart={(e: React.TouchEvent) => {
-                  touchStartX.current = e.touches[0].clientX;
-                }}
-                onTouchEnd={(e: React.TouchEvent) => {
-                  const delta = e.changedTouches[0].clientX - touchStartX.current;
-                  if (delta < -50) {
-                    setOpenSwipeId(st.id);
-                  } else if (delta > 20) {
-                    setOpenSwipeId(null);
-                  }
-                }}
-                onClick={() => {
-                  if (openSwipeId === st.id) setOpenSwipeId(null);
-                }}
-              >
-                {/* Row 1: type badge / category / name / member */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'nowrap' }}>
-                  <span style={{
-                    flexShrink: 0,
-                    display: 'inline-block', padding: '0.15rem 0.45rem',
-                    borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold',
-                    backgroundColor: st.type === 'income' ? '#e8f5e9' : st.type === 'expense' ? '#fce4ec' : '#fff3e0',
-                    color: st.type === 'income' ? '#2e7d32' : st.type === 'expense' ? '#c62828' : '#e65100',
-                  }}>
-                    {TYPE_LABELS[st.type]}
-                  </span>
-                  <span style={{
-                    flexGrow: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    fontSize: '0.9rem',
-                  }}>
-                    {st.category?.name ? `${st.category.name} / ` : ''}{st.name}
-                  </span>
-                  {!st.is_active && (
-                    <span style={{
-                      flexShrink: 0, fontSize: '0.7rem', padding: '0.1rem 0.35rem',
-                      borderRadius: '4px', backgroundColor: '#f5f5f5', color: '#757575',
-                    }}>
-                      無効
-                    </span>
-                  )}
-                  {st.member ? (
-                    <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}>
-                      <span style={{
-                        display: 'inline-block', width: '9px', height: '9px',
-                        borderRadius: '50%', backgroundColor: st.member.color,
-                      }} />
+              <div className="st-icon-lg">
+                {st.category?.icon || (st.type === 'income' ? '💰' : st.type === 'deduction' ? '📋' : '💸')}
+              </div>
+              <div className="st-item-info">
+                <div className="st-item-top">
+                  <span className="st-item-name">{st.name}</span>
+                  {st.member && (
+                    <span className="st-item-badge" style={{ background: st.member.color + '22', color: st.member.color }}>
                       {st.member.name}
                     </span>
-                  ) : null}
+                  )}
+                  {!st.is_active && <span className="st-item-badge st-item-badge-inactive">無効</span>}
                 </div>
-                {/* Row 2: amount / day */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#444' }}>
-                  <span style={{ fontWeight: 'bold' }}>金額: ¥{st.amount.toLocaleString()}</span>
-                  <span>登録日: {st.day_of_month}日</span>
+                <div className="st-item-sub">
+                  {st.category?.name || '未分類'}{st.memo ? ` ・ ${st.memo}` : ''}
                 </div>
+                <div className="st-item-day">毎月{st.day_of_month}日</div>
               </div>
-
-              {/* Action buttons revealed on swipe-left */}
-              <div style={{
-                position: 'absolute', top: 0, right: 0, width: '80px', height: '100%',
-                display: 'flex',
-              }}>
-                <button
-                  onClick={() => { setOpenSwipeId(null); handleOpenEdit(st); }}
-                  style={{
-                    flex: 1, border: 'none', backgroundColor: '#1976d2',
-                    color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
-                  }}
-                >
-                  編集
-                </button>
-                <button
-                  onClick={() => { setOpenSwipeId(null); handleDelete(st.id, st.name); }}
-                  style={{
-                    flex: 1, border: 'none', backgroundColor: '#f44336',
-                    color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
-                  }}
-                >
-                  削除
-                </button>
+              <div className="st-item-right">
+                <div className={`st-item-amount ${st.type === 'income' ? 'amount-income' : st.type === 'deduction' ? 'amount-deduction' : 'amount-expense'}`}>
+                  {st.type === 'income' ? '+' : '-'}¥{formatAmount(st.amount)}
+                </div>
+                <div className="st-item-actions">
+                  <button className="btn-icon" onClick={() => openEdit(st)} title="編集">✏️</button>
+                  <button className="btn-icon" onClick={() => handleDelete(st.id)} title="削除">🗑️</button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Entry Modal */}
+      {showModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
+          <div className="modal">
+            <div className="modal-header">
+              <h2 className="modal-title">{editingSt ? '固定費を編集' : '固定費を追加'}</h2>
+              <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
+            </div>
+
+            <div className="tabs" style={{ marginBottom: 20 }}>
+              <button className={`tab ${form.type === 'expense' ? 'active' : ''}`}
+                onClick={() => setForm(f => ({ ...f, type: 'expense', category_id: '' }))}>支出</button>
+              <button className={`tab ${form.type === 'income' ? 'active' : ''}`}
+                onClick={() => setForm(f => ({ ...f, type: 'income', category_id: '' }))}>収入</button>
+              <button className={`tab ${form.type === 'deduction' ? 'active' : ''}`}
+                onClick={() => setForm(f => ({ ...f, type: 'deduction', category_id: '' }))}>控除</button>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">予定名</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="例: 家賃、電気代"
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">金額（円）</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]+"
+                className="form-control"
+                placeholder="0"
+                value={form.amount}
+                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">登録日（毎月）</label>
+              <select className="form-control" value={form.day_of_month}
+                onChange={e => setForm(f => ({ ...f, day_of_month: e.target.value }))}>
+                {DAY_OPTIONS.map(d => (
+                  <option key={d} value={d}>{d}日</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">カテゴリ</label>
+              <select className="form-control" value={form.category_id}
+                onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}>
+                <option value="">選択してください</option>
+                {filteredCategories.map(c => (
+                  <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {members.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">メンバー</label>
+                <select className="form-control" value={form.member_id}
+                  onChange={e => setForm(f => ({ ...f, member_id: e.target.value }))}>
+                  <option value="">選択しない</option>
+                  {members.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">メモ</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="任意のメモ"
+                value={form.memo}
+                onChange={e => setForm(f => ({ ...f, memo: e.target.value }))}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="st-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+                />
+                有効（一括登録の対象にする）
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setShowModal(false)}>キャンセル</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving || !form.name.trim() || !form.amount}>
+                {saving ? '保存中...' : '保存'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .st-apply {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-bottom: 16px;
+          padding: 16px 20px;
+        }
+        .st-apply-label {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .st-apply-hint {
+          font-size: 12px;
+          color: var(--color-text-secondary);
+        }
+        .st-apply-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .st-apply-month {
+          width: auto;
+        }
+
+        .st-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 20px;
+        }
+        .st-item-border {
+          border-top: 1px solid var(--color-border);
+        }
+        .st-item-inactive {
+          opacity: 0.55;
+        }
+        .st-icon-lg {
+          font-size: 24px;
+          width: 42px;
+          height: 42px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--color-bg);
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .st-item-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .st-item-top {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .st-item-name {
+          font-weight: 600;
+          font-size: 15px;
+        }
+        .st-item-badge {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 1px 8px;
+          border-radius: 99px;
+        }
+        .st-item-badge-inactive {
+          background: var(--color-bg);
+          color: var(--color-text-secondary);
+        }
+        .st-item-sub {
+          font-size: 13px;
+          color: var(--color-text-secondary);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .st-item-day {
+          font-size: 12px;
+          color: var(--color-text-secondary);
+          margin-top: 2px;
+        }
+        .st-item-right {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+          flex-shrink: 0;
+        }
+        .st-item-amount {
+          font-size: 16px;
+        }
+        .st-item-actions {
+          display: flex;
+          gap: 2px;
+          opacity: 0;
+          transition: opacity 0.15s;
+        }
+        .st-item:hover .st-item-actions {
+          opacity: 1;
+        }
+        .st-checkbox {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        @media (max-width: 600px) {
+          .st-item-actions {
+            opacity: 1;
+          }
+          .st-apply-controls {
+            width: 100%;
+          }
+          .st-apply-month {
+            flex: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

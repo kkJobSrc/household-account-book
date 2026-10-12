@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List
 import datetime
 from enum import Enum
@@ -85,6 +85,18 @@ class ScheduledTransactionUpdate(BaseModel):
     day_of_month: Optional[int] = Field(default=None, ge=1, le=28)
     memo: Optional[str] = None
     is_active: Optional[bool] = None
+
+
+class ScheduledTransactionApplyRequest(BaseModel):
+    # Target year/month for the bulk apply. Both omitted -> current month (backward compatible).
+    year: Optional[int] = Field(default=None, ge=2000, le=2100)
+    month: Optional[int] = Field(default=None, ge=1, le=12)
+
+    @model_validator(mode="after")
+    def check_year_month_pair(self):
+        if (self.year is None) != (self.month is None):
+            raise ValueError("year and month must be specified together")
+        return self
 
 
 class ScheduledTransactionResponse(ScheduledTransactionBase):
