@@ -184,6 +184,16 @@ class MonthlyTrend(BaseModel):
     balance: float
 
 
+class CategoryTrend(BaseModel):
+    # Monthly total for one category (one row per year/month/category/type)
+    year: int
+    month: int
+    category_id: Optional[int]
+    category_name: str
+    type: TransactionType
+    total: float
+
+
 class RangeSummaryByCat(BaseModel):
     category_id: Optional[int]
     category_name: str

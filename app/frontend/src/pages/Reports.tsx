@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react';
-import { getMonthlyReport, getTrend, getRangeSummary } from '../api';
-import type { MonthlyReport, MonthlyTrend, RangeSummaryResponse } from '../types';
+import { getMonthlyReport, getTrend, getCategoryTrend, getRangeSummary, getCategories } from '../api';
+import type { MonthlyReport, MonthlyTrend, CategoryTrend, Category, RangeSummaryResponse, TransactionType } from '../types';
+import { getCategoryColor } from '../utils/categoryColor';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 
 const formatAmount = (n: number) => n.toLocaleString('ja-JP');
-const PIE_COLORS = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#be185d','#065f46','#78716c','#0284c7'];
+
+// Number of months shown in the monthly trend chart
+const TREND_MONTHS = 12;
+
+const TYPE_LABELS: Record<TransactionType, string> = {
+  income: '収入',
+  expense: '支出',
+  deduction: '控除',
+};
 
 const YEAR_OPTIONS = Array.from({ length: new Date().getFullYear() - 2019 }, (_, i) => 2020 + i);
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -23,6 +32,11 @@ export default function Reports() {
   const [report, setReport] = useState<MonthlyReport | null>(null);
   const [trend, setTrend] = useState<MonthlyTrend[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Category selection for the monthly trend chart (empty = income/expense totals)
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [trendCategoryIds, setTrendCategoryIds] = useState<number[]>([]);
+  const [categoryTrend, setCategoryTrend] = useState<CategoryTrend[]>([]);
 
   // タブ
   const [activeTab, setActiveTab] = useState<'monthly' | 'range'>('monthly');
@@ -49,7 +63,7 @@ export default function Reports() {
     setLoading(true);
     Promise.all([
       getMonthlyReport(year, month),
-      getTrend({ months: 12 })
+      getTrend({ months: TREND_MONTHS })
     ]).then(([rep, tr]) => {
       setReport(rep);
       setTrend(tr);
@@ -59,7 +73,21 @@ export default function Reports() {
   // 期間レポートの初回取得（全期間）
   useEffect(() => {
     fetchRangeSummary(true);
+    getCategories().then(setCategories);
   }, []);
+
+  // カテゴリ別の月次推移（カテゴリ選択時のみ取得）
+  useEffect(() => {
+    if (trendCategoryIds.length === 0) {
+      setCategoryTrend([]);
+      return;
+    }
+    getCategoryTrend({ months: TREND_MONTHS, category_id: trendCategoryIds }).then(setCategoryTrend);
+  }, [trendCategoryIds]);
+
+  const toggleTrendCategory = (id: number) => {
+    setTrendCategoryIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+  };
 
   const fetchRangeSummary = (forceAllPeriod?: boolean) => {
     const isAll = forceAllPeriod !== undefined ? forceAllPeriod : allPeriod;
@@ -103,10 +131,32 @@ export default function Reports() {
     支出: t.total_expense,
   }));
 
-  const expensePieData = report?.expense_by_category.map(c => ({
-    name: c.category_name,
-    value: c.total
-  })) ?? [];
+  // Stacked data per category: every month in the window gets a row (missing = 0)
+  const trendMonths = Array.from({ length: TREND_MONTHS }, (_, i) => {
+    const d = new Date(currentYear, currentMonth - TREND_MONTHS + i, 1);
+    return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  });
+  const selectedTrendCategories = categories.filter(c => trendCategoryIds.includes(c.id));
+  const categoryTrendData = trendMonths.map(({ year: y, month: m }) => {
+    const row: Record<string, string | number> = { name: `${m}月` };
+    selectedTrendCategories.forEach(c => {
+      row[`c${c.id}`] = categoryTrend
+        .filter(t => t.year === y && t.month === m && t.category_id === c.id)
+        .reduce((sum, t) => sum + t.total, 0);
+    });
+    return row;
+  });
+
+  // Expense breakdown: amount desc (backend order), ratio against the month's expense total
+  const expenseTotal = report?.expense_by_category.reduce((sum, c) => sum + c.total, 0) ?? 0;
+  const expensePieData = [...(report?.expense_by_category ?? [])]
+    .sort((a, b) => b.total - a.total)
+    .map(c => ({
+      categoryId: c.category_id,
+      name: c.category_name,
+      value: c.total,
+      ratio: expenseTotal > 0 ? (c.total / expenseTotal) * 100 : 0,
+    }));
 
   // 期間レポートのカテゴリ別データ
   const rangeByCatIncome = rangeData?.by_category.filter(c => c.type === 'income') ?? [];
@@ -272,18 +322,19 @@ export default function Reports() {
                           paddingAngle={2}
                           dataKey="value"
                         >
-                          {expensePieData.map((_, i) => (
-                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          {expensePieData.map(item => (
+                            <Cell key={item.categoryId ?? 'none'} fill={getCategoryColor(item.categoryId)} />
                           ))}
                         </Pie>
                         <Tooltip formatter={(v: number) => `¥${formatAmount(v)}`} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="pie-legend">
-                      {expensePieData.map((item, i) => (
-                        <div key={i} className="pie-legend-item">
-                          <span className="pie-legend-dot" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      {expensePieData.map(item => (
+                        <div key={item.categoryId ?? 'none'} className="pie-legend-item">
+                          <span className="pie-legend-dot" style={{ background: getCategoryColor(item.categoryId) }} />
                           <span className="pie-legend-name">{item.name}</span>
+                          <span className="pie-legend-ratio">{item.ratio.toFixed(1)}%</span>
                           <span className="pie-legend-val">¥{formatAmount(item.value)}</span>
                         </div>
                       ))}
@@ -324,17 +375,66 @@ export default function Reports() {
                 </div>
               ) : (
                 <div className="card" style={{ marginTop: 20 }}>
-                  <h2 className="section-title" style={{ marginBottom: 20 }}>月次推移（直近12ヶ月）</h2>
+                  <div className="trend-header">
+                    <h2 className="section-title">月次推移（直近{TREND_MONTHS}ヶ月）</h2>
+                    {trendCategoryIds.length > 0 && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => setTrendCategoryIds([])}>
+                        収入・支出の合計に戻す
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category picker: grouped by type, multiple selection */}
+                  <div className="trend-category-picker">
+                    {(['expense', 'income', 'deduction'] as TransactionType[]).map(type => {
+                      const typeCategories = categories.filter(c => c.type === type);
+                      if (typeCategories.length === 0) return null;
+                      return (
+                        <div key={type} className="trend-category-group">
+                          <span className="trend-category-group-label">{TYPE_LABELS[type]}</span>
+                          {typeCategories.map(c => {
+                            const selected = trendCategoryIds.includes(c.id);
+                            return (
+                              <button
+                                key={c.id}
+                                className={`trend-category-chip ${selected ? 'selected' : ''}`}
+                                style={selected ? { borderColor: getCategoryColor(c.id), background: getCategoryColor(c.id) + '1f' } : undefined}
+                                onClick={() => toggleTrendCategory(c.id)}
+                                aria-pressed={selected}
+                              >
+                                <span className="trend-category-dot" style={{ background: getCategoryColor(c.id) }} />
+                                {c.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={trendData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/10000).toFixed(0)}万`} />
-                      <Tooltip formatter={(v: number) => `¥${formatAmount(v)}`} />
-                      <Legend />
-                      <Bar dataKey="収入" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="支出" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                    </BarChart>
+                    {trendCategoryIds.length === 0 ? (
+                      <BarChart data={trendData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/10000).toFixed(0)}万`} />
+                        <Tooltip formatter={(v: number) => `¥${formatAmount(v)}`} />
+                        <Legend />
+                        <Bar dataKey="収入" fill="#16a34a" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="支出" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    ) : (
+                      <BarChart data={categoryTrendData} margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                        <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${(v/10000).toFixed(1)}万`} />
+                        <Tooltip formatter={(v: number) => `¥${formatAmount(v)}`} />
+                        <Legend />
+                        {selectedTrendCategories.map(c => (
+                          <Bar key={c.id} dataKey={`c${c.id}`} name={c.name} stackId="category" fill={getCategoryColor(c.id)} stroke="var(--color-surface)" strokeWidth={2} />
+                        ))}
+                      </BarChart>
+                    )}
                   </ResponsiveContainer>
                 </div>
               )}
@@ -702,9 +802,64 @@ export default function Reports() {
           font-size: 13px;
           color: var(--color-text-secondary);
         }
+        .pie-legend-ratio {
+          font-size: 13px;
+          color: var(--color-text-secondary);
+          min-width: 48px;
+          text-align: right;
+        }
         .pie-legend-val {
           font-size: 13px;
           font-weight: 600;
+          min-width: 72px;
+          text-align: right;
+        }
+        .trend-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-bottom: 12px;
+        }
+        .trend-category-picker {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+        .trend-category-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .trend-category-group-label {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--color-text-secondary);
+          min-width: 32px;
+        }
+        .trend-category-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          border: 1px solid var(--color-border);
+          border-radius: 99px;
+          background: var(--color-surface);
+          font-size: 13px;
+          color: var(--color-text);
+          cursor: pointer;
+        }
+        .trend-category-chip.selected {
+          font-weight: 600;
+        }
+        .trend-category-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          flex-shrink: 0;
         }
         .section-title {
           font-size: 16px;
