@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from typing import List, Optional
@@ -120,15 +120,18 @@ def get_monthly_report(year: int, month: int, db: Session = Depends(get_db)):
     )
 
 
-@router.get('/trend', response_model=List[schemas.MonthlyTrend])
-def get_trend(
-    months: int = 12,
-    start_year: Optional[int] = None,
-    start_month: Optional[int] = None,
-    end_year: Optional[int] = None,
-    end_month: Optional[int] = None,
-    db: Session = Depends(get_db)
-):
+def _trend_date_filter(
+    months: int,
+    start_year: Optional[int],
+    start_month: Optional[int],
+    end_year: Optional[int],
+    end_month: Optional[int],
+) -> list:
+    """Build the date filter shared by the trend endpoints.
+
+    Either all four range params are given (inclusive month range), or none
+    (the last `months` months up to the current month).
+    """
     range_params = [start_year, start_month, end_year, end_month]
     specified_count = len([p for p in range_params if p is not None])
 
@@ -151,19 +154,31 @@ def get_trend(
             end_date_exclusive = date(end_year + 1, 1, 1)
         else:
             end_date_exclusive = date(end_year, end_month + 1, 1)
-        date_filter = [
+        return [
             models.Transaction.date >= start_date,
             models.Transaction.date < end_date_exclusive
         ]
-    else:
-        today = date.today()
-        start_m = today.month - months + 1
-        start_y = today.year
-        while start_m <= 0:
-            start_m += 12
-            start_y -= 1
-        start_date = date(start_y, start_m, 1)
-        date_filter = [models.Transaction.date >= start_date]
+
+    today = date.today()
+    start_m = today.month - months + 1
+    start_y = today.year
+    while start_m <= 0:
+        start_m += 12
+        start_y -= 1
+    start_date = date(start_y, start_m, 1)
+    return [models.Transaction.date >= start_date]
+
+
+@router.get('/trend', response_model=List[schemas.MonthlyTrend])
+def get_trend(
+    months: int = 12,
+    start_year: Optional[int] = None,
+    start_month: Optional[int] = None,
+    end_year: Optional[int] = None,
+    end_month: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    date_filter = _trend_date_filter(months, start_year, start_month, end_year, end_month)
 
     results = db.query(
         extract('year', models.Transaction.date).label('year'),
@@ -317,3 +332,55 @@ def get_range_summary(
         by_category=by_category,
         by_member=by_member
     )
+
+
+# NOTE: defined as a separate endpoint so the /trend response stays unchanged
+@router.get('/trend/by-category', response_model=List[schemas.CategoryTrend])
+def get_trend_by_category(
+    months: int = 12,
+    start_year: Optional[int] = None,
+    start_month: Optional[int] = None,
+    end_year: Optional[int] = None,
+    end_month: Optional[int] = None,
+    # Multi-value category filter: ?category_id=1&category_id=2 (omitted = all categories)
+    category_ids: List[int] = Query(default=[], alias='category_id'),
+    db: Session = Depends(get_db)
+):
+    date_filter = _trend_date_filter(months, start_year, start_month, end_year, end_month)
+
+    query = db.query(
+        extract('year', models.Transaction.date).label('year'),
+        extract('month', models.Transaction.date).label('month'),
+        models.Transaction.category_id,
+        models.Category.name,
+        models.Transaction.type,
+        func.sum(models.Transaction.amount).label('total')
+    ).outerjoin(
+        models.Category, models.Transaction.category_id == models.Category.id
+    ).filter(*date_filter)
+
+    if category_ids:
+        query = query.filter(models.Transaction.category_id.in_(category_ids))
+
+    results = query.group_by(
+        extract('year', models.Transaction.date),
+        extract('month', models.Transaction.date),
+        models.Transaction.category_id,
+        models.Category.name,
+        models.Transaction.type
+    ).order_by(
+        extract('year', models.Transaction.date),
+        extract('month', models.Transaction.date),
+        models.Transaction.category_id
+    ).all()
+
+    return [
+        schemas.CategoryTrend(
+            year=int(row.year),
+            month=int(row.month),
+            category_id=row.category_id,
+            category_name=row.name or '未分類',
+            type=row.type,
+            total=row.total
+        ) for row in results
+    ]

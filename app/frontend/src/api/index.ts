@@ -1,5 +1,5 @@
 import api from './client';
-import type { Member, Category, Transaction, TransactionCreate, MonthlyReport, MonthlyTrend, RangeSummaryResponse, ScheduledTransaction, ScheduledTransactionCreate, ReceiptImage, ReceiptImageUploadResponse } from '../types';
+import type { Member, Category, Transaction, TransactionCreate, MonthlyReport, MonthlyTrend, CategoryTrend, RangeSummaryResponse, ScheduledTransaction, ScheduledTransactionCreate, ReceiptImage, ReceiptImageUploadResponse } from '../types';
 
 // Members
 export const getMembers = () => api.get<Member[]>('/members/').then(r => r.data);
@@ -68,6 +68,17 @@ export const getTrend = (params?: {
   end_year?: number;
   end_month?: number;
 }) => api.get<MonthlyTrend[]>('/reports/trend', { params }).then(r => r.data);
+
+// Monthly totals per category; category_id is sent as a repeated key (?category_id=1&category_id=2)
+export const getCategoryTrend = (params: {
+  months?: number;
+  category_id?: number[];
+}) => {
+  const searchParams = new URLSearchParams();
+  if (params.months !== undefined) searchParams.set('months', String(params.months));
+  (params.category_id ?? []).forEach(id => searchParams.append('category_id', String(id)));
+  return api.get<CategoryTrend[]>('/reports/trend/by-category', { params: searchParams }).then(r => r.data);
+};
 
 export const getRangeSummary = (params?: {
   start_year?: number;

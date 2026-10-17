@@ -96,6 +96,15 @@ export interface MonthlyReport {
   by_member: MemberSummary[];
 }
 
+export interface CategoryTrend {
+  year: number;
+  month: number;
+  category_id: number | null;
+  category_name: string;
+  type: TransactionType;
+  total: number;
+}
+
 export interface MonthlyTrend {
   year: number;
   month: number;
