@@ -18,6 +18,10 @@ const PARAM_SORT_ORDER = 'sort_order';
 const PARAM_YEAR = 'year';
 const PARAM_MONTH = 'month';
 
+// Max rows fetched per request: month view vs. date-range view
+const MONTH_FETCH_LIMIT = 200;
+const RANGE_FETCH_LIMIT = 1000;
+
 type SortBy = 'date' | 'amount' | 'created_at';
 type SortOrder = 'asc' | 'desc';
 
@@ -109,11 +113,16 @@ export default function Transactions() {
     }, { replace: true });
   }, [setSearchParams]);
 
+  // A date range replaces the month view: year/month must not be sent together with it,
+  // because the backend ANDs all conditions (range ∩ displayed month)
+  const isRangeMode = Boolean(dateFrom || dateTo);
+  const fetchLimit = isRangeMode ? RANGE_FETCH_LIMIT : MONTH_FETCH_LIMIT;
+
   const load = useCallback(() => {
     setLoading(true);
     getTransactions({
-      year,
-      month,
+      year: isRangeMode ? undefined : year,
+      month: isRangeMode ? undefined : month,
       type: selectedTypes.length > 0 ? selectedTypes : undefined,
       member_id: selectedMemberIds.length > 0 ? selectedMemberIds : undefined,
       category_id: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
@@ -121,9 +130,9 @@ export default function Transactions() {
       date_to: dateTo || undefined,
       sort_by: sortBy,
       sort_order: sortOrder,
-      limit: 200,
+      limit: fetchLimit,
     }).then(setTransactions).finally(() => setLoading(false));
-  }, [year, month, selectedTypes, selectedMemberIds, selectedCategoryIds, dateFrom, dateTo, sortBy, sortOrder]);
+  }, [isRangeMode, fetchLimit, year, month, selectedTypes, selectedMemberIds, selectedCategoryIds, dateFrom, dateTo, sortBy, sortOrder]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -191,6 +200,16 @@ export default function Transactions() {
       const next = new URLSearchParams();
       const keepKeys = [PARAM_YEAR, PARAM_MONTH];
       keepKeys.forEach(k => { const v = prev.get(k); if (v) next.set(k, v); });
+      return next;
+    }, { replace: true });
+  };
+
+  // --- Clear only the date range (back to the month view) ---
+  const clearDateRange = () => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete(PARAM_DATE_FROM);
+      next.delete(PARAM_DATE_TO);
       return next;
     }, { replace: true });
   };
@@ -272,12 +291,23 @@ export default function Transactions() {
         </button>
       </div>
 
-      {/* Month Navigator */}
-      <div className="month-nav">
-        <button className="btn btn-ghost btn-sm" onClick={prevMonth}>&lsaquo;</button>
-        <span className="month-label">{year}年{month}月</span>
-        <button className="btn btn-ghost btn-sm" onClick={nextMonth}>&rsaquo;</button>
-      </div>
+      {/* Month Navigator (replaced by the range label while a date range is set) */}
+      {isRangeMode ? (
+        <div className="month-nav">
+          <span className="range-label">
+            期間: {dateFrom ? format(parseISO(dateFrom), 'yyyy/MM/dd') : '指定なし'}
+            {' 〜 '}
+            {dateTo ? format(parseISO(dateTo), 'yyyy/MM/dd') : '指定なし'}
+          </span>
+          <button className="btn btn-ghost btn-sm" onClick={clearDateRange}>月表示に戻る</button>
+        </div>
+      ) : (
+        <div className="month-nav">
+          <button className="btn btn-ghost btn-sm" onClick={prevMonth}>&lsaquo;</button>
+          <span className="month-label">{year}年{month}月</span>
+          <button className="btn btn-ghost btn-sm" onClick={nextMonth}>&rsaquo;</button>
+        </div>
+      )}
 
       {/* Sort bar + Filter toggle */}
       <div className="tx-toolbar">
@@ -441,6 +471,11 @@ export default function Transactions() {
           ))}
         </div>
       )}
+      {!loading && transactions.length >= fetchLimit && (
+        <p className="tx-limit-note">
+          表示上限（{fetchLimit}件）に達したため、一部のみ表示しています。期間や条件を絞り込んでください。
+        </p>
+      )}
 
       {/* Entry Modal */}
       {showModal && (
@@ -540,6 +575,16 @@ export default function Transactions() {
           font-size: 16px;
           font-weight: 700;
           min-width: 100px;
+          text-align: center;
+        }
+        .range-label {
+          font-size: 15px;
+          font-weight: 700;
+        }
+        .tx-limit-note {
+          margin-top: 12px;
+          font-size: 13px;
+          color: var(--color-text-secondary);
           text-align: center;
         }
 
@@ -724,6 +769,13 @@ export default function Transactions() {
         }
         .tx-item:hover .tx-item-actions {
           opacity: 1;
+        }
+        @media (max-width: 768px) {
+          /* Keep >= 16px so iOS Safari does not zoom in on focus */
+          .tx-sort-select,
+          .filter-date-range .form-control {
+            font-size: 16px;
+          }
         }
         @media (max-width: 600px) {
           .tx-item-actions {
