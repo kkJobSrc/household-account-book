@@ -276,9 +276,12 @@ export default function Transactions() {
     if (!confirm('この記録を削除しますか？')) return;
     try {
       await deleteTransaction(id);
-      load();
     } catch {
       alert('削除に失敗しました。通信状況を確認してください。');
+    } finally {
+      // Always reload: the request may have reached the server even when the
+      // client saw an error (e.g. connection dropped before the response)
+      load();
     }
   };
 
